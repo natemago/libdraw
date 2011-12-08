@@ -1,0 +1,104 @@
+<script id="setup-code">
+
+var M = function(x, y, rad, vn, ang){
+    this.x = x;
+    this.y = y;
+    this.radius = rad;
+    this.v = vn;
+    this.ang = ang || 0;
+    this.incAng = 2*Math.PI/this.v;
+    
+    this.points = [];
+    
+    this.calculate = function(){
+      this.points = [];
+      var r = this.ang;
+      for(var i = 0; i < this.v; i++){
+         this.points.push([
+           this.radius*Math.cos(r) + this.x,
+           this.radius*Math.sin(r) + this.y
+         ]);
+         r+=this.incAng;
+      }
+    };
+    
+    this.render = function(runtime){
+      this.calculate();
+      runtime.complex(this.points, true);
+    };
+};
+
+var MM = function(x, y, rad1, rad2, vn, ang){
+   ang = ang ||0;
+   this.m1 = new M(x, y, rad1, vn, ang);
+   this.m2 = new M(x, y, rad2, vn, ang + this.m1.incAng/2);
+   
+   this.x = x;
+   this.y = y;
+   this.rad1 = rad1;
+   this.rad2 = rad2;
+   this.v = vn;
+   this.ang = ang;
+   
+   
+   this.points = [];
+   this.calculate = function(){
+      if(this.v < 3) this.v =3;
+      this.m1.v = this.v;
+      this.m2.v = this.v;
+      
+      this.incAng = 2*Math.PI/this.v;
+      this.m1.incAng = this.incAng;
+      this.m2.incAng = this.incAng;
+      
+      
+      this.m1.x = this.m2.x = this.x;
+      this.m1.y = this.m2.y = this.y;
+      this.m1.ang = this.ang;
+      this.m2.ang = this.ang + this.m1.incAng/2;
+      this.m1.radius = this.rad1;
+      this.m2.radius = this.rad2;
+      
+      
+      this.m1.calculate();
+      this.m2.calculate();
+      this.points = [];
+      for(var i = 0; i < vn; i++){
+         this.points.push(this.m1.points[i]);
+         this.points.push(this.m2.points[i]);
+      }
+   };
+   
+   this.render = function(runtime){
+      this.calculate();
+      runtime.complex(this.points, true);
+   };
+   
+};
+
+
+this.triangle = new MM(100,100, 30, 30, 5);
+this.runtime.on('keydown', function(){
+  if(this.keyCode == 38){
+     //this.triangle.ang+=0.1;
+     this.triangle.v++;
+  }else if(this.keyCode == 40){
+     //this.triangle.ang-=0.1;
+     this.triangle.v--;
+  }
+  
+this.stroke(255,255,255);
+this.fill(78,78,78);
+trace(this.triangle.v);
+  
+});
+
+</script>
+<script id="exec-code">
+
+
+this.triangle.rad1 += 0.7*Math.sin(this.frame/16);
+this.triangle.rad2 += 1.5*Math.cos(this.frame/16);
+
+this.triangle.render(this);
+</script>

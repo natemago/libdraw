@@ -1,0 +1,39 @@
+<script id="setup-code">
+this.originalBackground = this.BACKGROUND;
+this.bRed = 'rgb(255,0,0)';
+this.bGreen = 'rgb(0,255,0)';
+this.bBlue = 'rgb(0,0,255)';
+this.useBackground = this.originalBackground;
+
+// register a 'keypress' event listener
+this.runtime.on('keypress', function(e){
+  
+  switch(this.keyCode){
+      case 114:
+         this.useBackground = this.bRed;
+         break;
+      case 103:
+         this.useBackground = this.bGreen;
+         break;
+      case 98:
+         this.useBackground = this.bBlue;
+         break;
+      case 111:
+         this.useBackground = this.originalBackground;
+         break;
+  }
+  
+});
+
+</script>
+<script id="exec-code">
+/*
+Press:
+r - to set the background to RED
+g - to set the background to GREEN
+b - to set the background to BLUE
+o - to set the background to default color
+*/
+
+this.background(this.useBackground);
+</script>

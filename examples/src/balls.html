@@ -1,0 +1,221 @@
+<script id="setup-code">
+   var Ball = function(x, y, radius, color){
+      this.x = x;
+      this.y = y;
+      this.color = color;
+      this.radius = radius;
+      
+      this.render = function(rt){
+          var color = this.color;
+          rt.fill(color.red, color.green, color.blue, color.alpha);
+          rt.circle(this.x, this.y, this.radius);
+      }
+   };
+   
+   
+   var System = function(center, rings){
+      this.center = center;
+      this.rings = rings;
+      this.x = this.center.x;
+      this.y = this.center.y;
+      
+      this.render = function(rt){
+         this.center.x = this.x;
+         this.center.y = this.y;
+         this.center.render(rt);
+         for(var i = 0; i< this.rings.length; i++){
+            var r = this.rings[i];
+            var rad = 2*Math.PI/r.balls.length;
+            var currRad = r.displacement;
+            for(var j = 0; j < r.balls.length; j++){
+               r.balls[j].x = this.x + r.radius*Math.cos(currRad);
+               r.balls[j].y = this.y + r.radius*Math.sin(currRad);
+               r.balls[j].render(rt);
+               if(r.direction){
+                  currRad += rad;
+               }else{
+                  currRad -= rad;
+               }
+            }
+         }
+      };
+      
+      this.displace = function(displacements){
+         for(var i = 0; i < this.rings.length; i++){
+            if(displacements[i]){
+               this.rings[i].displacement += displacements[i];
+            } 
+         }
+      }
+      
+   };
+   
+   var COLORS = [
+      { // BLACK
+         red: 0,
+         green: 0,
+         blue: 0
+      },
+      { // BLACK
+         red: 10,
+         green: 10,
+         blue: 10
+      },
+      { // BLACK
+         red: 30,
+         green: 30,
+         blue: 30
+      },
+      { // BLACK
+         red: 70,
+         green: 70,
+         blue: 70
+      },
+      { // BLACK
+         red: 110,
+         green: 110,
+         blue: 110
+      },
+      { // BLACK
+         red: 150,
+         green: 150,
+         blue: 150
+      },
+      { // BLACK
+         red: 180,
+         green: 180,
+         blue: 180
+      },
+      { // BLACK
+         red: 200,
+         green: 200,
+         blue: 200
+      },
+      { // BLACK
+         red: 220,
+         green: 220,
+         blue: 220
+      },
+      { // BLACK
+         red: 230,
+         green: 230,
+         blue: 230
+      },
+      { // BLACK
+         red: 40,
+         green: 40,
+         blue: 40
+      },
+      { // WHITE
+         red: 255,
+         green: 255,
+         blue: 255
+      }
+   
+   ];
+   
+   
+   this.BALLS = {
+      createBall: function(x,y,rad){
+         return new Ball(x, y, rad, COLORS[Math.floor(Math.random()*COLORS.length)]);
+      },
+      createRandomSystem: function(x,y, ballsRadius, centerBallRadius, ringsCount, RBdensity, firstRingOffset, ringOffset){
+         var center = this.createBall(x,y,centerBallRadius);
+         var rings = [];
+         var ringRad = centerBallRadius + 2*ballsRadius + firstRingOffset;
+         var dir = true;
+         for(var  i = 0; i < ringsCount; i++){
+            var ballsN = Math.floor(Math.random()*(i+RBdensity))+1;
+            var balls = [];
+            while(ballsN--){
+               balls.push(this.createBall(0,0, ballsRadius));
+            }
+            rings.push({
+               balls: balls,
+               radius: ringRad ,
+               displacement: 0,
+               direction: dir
+            });
+            ringRad+=2*ballsRadius + ringOffset;
+            dir = !dir;
+         }
+         
+         return new System(center, rings);
+      }
+   };
+
+   this.size(400,400);
+   this.strokeSize(0);
+   this.nx = 0;
+   this.ny = 0;
+      
+   this.runtime.mouseMove = function(){
+      this.nx = this.mouseX;
+      this.ny = this.mouseY;
+   };
+   
+   
+   
+   
+   var getDisplacements = function(n){
+      var ds = [];
+      for(var i = 0; i < n; i++){
+         ds.push(Math.random()*0.2);
+      }
+      return ds;
+   };
+   
+   this.BALLS.systems = [];
+   this.BALLS.SYSTEMSN = 5;
+   for(var  i = 0; i < this.BALLS.SYSTEMSN; i++){
+      var ballR = Math.floor(Math.random()*4)+1;
+      var ringsN = Math.floor(Math.random()*5)+6;
+      var s = this.BALLS.createRandomSystem(
+                  200,// + Math.floor(Math.random()*40),  // x
+                  200,// + Math.floor(Math.random()*40),  // y
+                  2,//ballR,   // balls radius
+                  3,//ballR+2,   // center ball radius
+                  10,//ringsN,    // number of rings
+                  5,    // Balls Per Ring Density
+                  2,    // first ring offset
+                  3    // inbetween rings offset
+                  );
+      var displacements = getDisplacements(ringsN);
+      
+      this.BALLS.systems.push({
+         system: s,
+         displacements: displacements,
+         acceleration: 2+2*i//Math.pow(2,Math.floor(Math.random()*3)+3)
+      });
+   }
+   
+   
+   
+</script>
+<script id="exec-code">
+   try{
+   
+      var ballsN = 0;
+      for(var  i = 0; i < this.BALLS.systems.length; i++){
+         var sd = this.BALLS.systems[i];
+         var s = sd.system;
+         
+         s.displace(sd.displacements);
+         s.render(this);
+         
+         s.x -= (s.x - this.nx)/sd.acceleration;
+         s.y -= (s.y - this.ny)/sd.acceleration;
+         for(var j = 0; j < s.rings.length; j++){
+            ballsN += s.rings[j].balls.length;
+         }
+         
+      }
+   
+      this.fill(200,200,255);
+      this.text(ballsN + " balls", 350,350);
+   
+   }catch(ex){
+      // do nothing :/
+   }
+
+</script>
