@@ -1,5 +1,5 @@
 /**
-  *  LibDraw JavaScript library, version 0.2.0
+  *  LibDraw JavaScript library, version 0.2.1
   *  
   *  Licensed under GPLv3:
   *  http://www.gnu.org/licenses/gpl-3.0.html
@@ -11,7 +11,7 @@
 (function($){
     var seqId = 0;
     libdraw = {
-        version: '0.2.0',
+        version: '0.2.1',
         description: 'LibDraw JavaScript library',
         ext:{}, // extension packages
         extend: function(extName, extension){
@@ -165,6 +165,7 @@
             this.height = config.height || 300;
             
             var rt = {
+                toString: function(){return this.self.id + ' on canvas [' + config.canvas.id + ']';},
                 frameRate: function(fr){
                     self.clock.setInterval(1000/fr);
                 },
@@ -373,6 +374,9 @@
                 self: self
             };
             
+            
+            config.canvas.libdraw_rt = rt;
+            
             // events attach
             $(config.canvas).mousemove(function(e){
                 rt.mouseX = e.pageX - $(this).offset().left;
@@ -554,6 +558,10 @@
             this.paused  = function(){
                return this.clock.paused;
             };
+            
+            this.started = function(){
+               return this.clock.started;
+            };
            
             this.bindEvent = function(event, callback, scope){
                 var self = this;
@@ -669,7 +677,11 @@
          }
          this.el.addClass('console-display');
       },
-      print: function(msg){
+      print: function(msg, buffer){
+         if(buffer){
+            buffer.push(msg);
+            return false;
+         }
          this.el[0].innerHTML += msg;
          
          var ee = this.el[0];
@@ -677,18 +689,18 @@
             this.el[0].scrollTop = this.el[0].scrollHeight;
          }
       },
-      println: function(msg){
+      println: function(msg, buffer){
          var newLine = '\n';
          if(this.mode == 'html') newLine = '<br/>';
-         this.print(msg + newLine);
+         this.print(msg + newLine, buffer);
       },
-      printerr: function(msg){
+      printerr: function(msg, buffer){
          if(this.mode == 'text'){
             msg = 'error: ' + msg;
          }else if(this.mode == 'html'){
             msg = '<span style="color: red">' + msg + '</span>';
          }
-         this.println(msg);
+         this.println(msg, buffer);
       },
       clear: function(){
          this.el.html('');
@@ -726,35 +738,86 @@
          var cmdText = $('.cmd-text');
          var cmdExec = $('.cmd-exec');
          var self = this;
+         
+         
+         var msg = function(m){
+            if(self.mode =='html'){
+               return m.replace(/\n/gim, '<br/>').replace(/ /gim, '&nbsp;');
+            }
+            return m;
+         };
+         
+         
+         
+         this.commands = {};
+         
+         var processCmd = function(inputEl, commandName, args, line){
+             if(self.commands[commandName]){
+                var r = self.commands[commandName].call(self, inputEl, commandName, args, line);
+                return r;
+             }
+             return undefined;
+         };
+         
+         var CMD = /^\:\w+/g;
+         
+         var print_result = function(result){
+            var buffer = [];
+            if(typeof(result) == 'object'){
+               self.println('Object: {', buffer);
+               for(var p in result){
+                  self.print(' '+ p + ": ", buffer);
+                  try{
+                     if(typeof(result[p]) == 'function'){
+                        self.println('function(..){...},', buffer)
+                     }else if(typeof(result[p]) == 'string'){
+                        self.println('"' + result[p] +'",', buffer)
+                     }else{
+                        self.println(result[p] + ",", buffer);
+                     }
+                  }catch(e2){
+                     self.printerr('[error while examining property]', buffer);
+                  }
+                  
+               }
+               self.println('}', buffer);
+             }else{
+               self.println(result, buffer);
+             }
+             self.print(buffer.join(' '));
+         };
+         
+         
+         this.ENV = {};
+         
          var onCmd = function(){
             var cmd = cmdText.length ? cmdText[0] : undefined;
             if(cmd){
+               var command = x.util.trim(cmd.value);
                self.println('~$ ' + cmd.value);
                try{
-                   var f = new Function('return ' + cmd.value);
-                   var result = f.call(this);
-                   if(typeof(result) == 'object'){
-                     self.println('Object: {');
-                     for(var p in result){
-                        self.print(' '+ p + ": ");
-                        try{
-                           if(typeof(result[p]) == 'function'){
-                              self.println('function(..){...},')
-                           }else if(typeof(result[p]) == 'string'){
-                              self.println('"' + result[p] +'",')
-                           }else{
-                              self.println(result[p] + ",");
-                           }
-                        }catch(e2){
-                           self.printerr('[error while examining property]');
-                        }
-                        
-                     }
-                     self.println('}');
-                   }else{
-                     self.println(result);
+                   if(x.util.startsWith(command,":")){
+                      var cmdName = command.match(CMD)[0].substring(1);
+                      var args = x.util.trim(command.substring(cmdName.length+1));
+                      var r = processCmd.call(self, cmd, cmdName, args, command);
+                      //self.println(cmdName + " (command)");
+                      if(r !== undefined){
+                         print_result(r);
+                      }
+                      cmd.value = '';
+                      return;
                    }
+                   var ft= '';
+                   for(var c in self.ENV){
+                     if(self.ENV.hasOwnProperty(c)){
+                        ft+='var ' + c + ' = this.ENV.' + c + ';';
+                     }
+                   }
+                   ft += 'return ' + cmd.value + ';';
+                   var f = new Function(ft);
+                   var result = f.call(this);
                    
+                   print_result(result);
                }catch(ex){
                    self.printerr(ex.message);
                }
@@ -762,28 +825,140 @@
             }
          };
          
+         var current = 0;
+         
+         this.history = {
+            _h: [],
+            down: function(el){
+               if(current >= this._h.length)
+                  current = this._h.length-1;
+               if(this._h[current]){
+                  el.value = this._h[current];
+               }
+               current++;
+            },
+            up: function(el){
+               if(current <= 0)
+                  current = 0;
+               if(this._h[current]){
+                  el.value = this._h[current];
+               }
+               current--;
+            },
+            add: function(entry){
+               this._h.push(entry);
+               current = this._h.length - 1;
+            }
+         };
+         
+         
          cmdText.keydown(function(e){
             if(e.which == 13){
+               self.history.add(cmdText[0].value);
                onCmd.call(self);
+            }else if(e.which == 38){ // up
+               //debugger;
+               self.history.up(cmdText[0]);
+            }else if(e.which == 40){ // down
+               self.history.down(cmdText[0]);
             }
+            
          });
          
          cmdExec.click(function(){
             onCmd.call(self);
          });
          
+         this.addCommand('lscmd', function(){
+            for(var c in self.commands){
+               if(self.commands.hasOwnProperty(c)){
+                  self.println(c);
+               }
+            }
+         });
+         
+         this.addCommand('env', function(){
+            for(var c in self.ENV){
+               if(self.ENV.hasOwnProperty(c)){
+                  self.println(c + '=' + self.ENV[c]);
+               }
+            }
+         });
+         
+         this.addCommand('set', function(el, cmd, args, line){
+            var a = args.split(" ");
+            if(a && a.length >= 2){
+               var n = x.util.trim(a[0]);
+               var v = x.util.trim(a[1]);
+               self.ENV[n] = v;
+               self.println(n + ' = ' + v);
+            }
+         });
+         this.addCommand('runtimes', function(el, cmd, args, line){
+            var i = 1;
+            $('canvas').each(function(){
+               if(this.libdraw_rt){
+                  self.println(i + '. ' + this.libdraw_rt.toString());
+                  i++;
+               }
+            });
+         });
+         this.addCommand('usert', function(el, cmd, args, line){
+            var a = args.split(" ");
+
+            if(a && a.length >= 1){
+               var rtid = x.util.trim(a[0]);
+                $('canvas').each(function(){
+                if(this.libdraw_rt && this.libdraw_rt.self.id == rtid){
+                  self.ENV['rt'] = this.libdraw_rt;
+                  self.println('Using runtime: ' + this.libdraw_rt);
+                  return false;
+                }
+            });
+            }
+         });
+         
+         this.addCommand('monitor', function(el, cmd, args, line){
+            if($('.monitor', this.el).length == 0){
+               this.el.append('<div style="width: 100%" class="monitor"/>');
+            }
+            var a = args.split(' ');
+            if(a && a.length > 1){
+               if(!self.ENV.rt){
+                  self.printerr('You must select a runtime to attach monitor to.');
+                  return false;
+               }
+               var label = x.util.trim(a[0]);
+               var expression = 'return ' + x.util.trim(a[1]) + ';';
+               var monitor = $('<span style="border: solid 1px gray; padding: 2px; margin: 2px;"/>');
+               $('.monitor').append(monitor);
+               try{
+                  var f = new Function(expression);
+                  var mid = self.ENV.rt.self.exec(function(){
+                     try{
+                     var value = f.call(self.ENV.rt);
+                     monitor.html(label + ': ' + value);
+                     }catch(e2){}
+                  });
+                  self.println('Monitor handler: ' + mid);
+               }catch(e){}
+            }
+         });
       },
-      print: function(msg){
-         this.show();
-         this.display.print(msg);
+      addCommand: function(name, def){
+         this.commands[name] = def;
       },
-      println: function(msg){
+      print: function(msg, buffer){
          this.show();
-         this.display.println(msg);
+         this.display.print(msg, buffer);
       },
-      printerr: function(msg){
+      println: function(msg, buffer){
          this.show();
-         this.display.printerr(msg);
+         this.display.println(msg, buffer);
+      },
+      printerr: function(msg, buffer){
+         this.show();
+         this.display.printerr(msg, buffer);
       },
       clear: function(){
          this.display.clear();
@@ -804,14 +979,14 @@
    libdraw.util.other.debug.DebugConsole.createDefault = function(){
       var id = libdraw.getId('libdraw-console');
       var markup = [
-        '<div style="width: 100%; padding: 0px; margin: 0px; border: 0px; bottom: 0; position: absolute;display: none;">',
+        '<div style="width: 100%; padding: 0px; margin: 0px; border: 0px; bottom: 0; position: absolute;">',
          '<div id="',id,'" class="console-wrapper" style="display: none; ">',
             '<div style="font: bold 14px; padding: 4px; text-align: left;">Debug Console</div>',
             '<div style="padding: 5px;">',
                '<div class="text-display" ></div>',
                '<div style="text-align: right; padding: 4px;">',
                   '<span style="text-align: right; width: 2%; background-color: #dddddd;">~$</span>',
-                  '<input type="text" class="cmd-text" style="font-size: 10px; width: 83%; font-family: mono; border: none; background-color: #dddddd;"/><input type="button" class="cmd-exec" value="Go" style="font-size: 10px; width: 5%;"/>',
+                  '<input type="text" class="cmd-text" style="font-size: 10px; width: 83%; font-family: mono; border: none; background-color: #dddddd; color: gray;"/><input type="button" class="cmd-exec" value="Go" style="font-size: 10px; width: 5%;"/>',
                   '<input type="button" class="clear-button" style="font-size: 10px; width: 5%;" value="Clear"/>',
                   '<input type="button" class="close-button" style="font-size: 10px; width: 5%;" value="Close"/>',
                '</div>',
@@ -882,6 +1057,7 @@
       }
       
       for(var  i =0 ; i < imgArr.length; i++){
+
          imgArr[i].image.src = imgArr[i].src;
       }
    };

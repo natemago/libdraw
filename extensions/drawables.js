@@ -1,3 +1,14 @@
+/**
+ * 
+ */
+ 
+ /* TODO:
+  * 1. Cleanup the "events" mess!
+  * 2. Dragging issue - Drawables-manager should handle this!
+  * 3. Drop locations!!!
+  * 4. Write some documentation
+  */
+
 (function(){
     if(window.libdraw){
         var dwid = function(pref){
@@ -5,6 +16,29 @@
         };
         libdraw.util.ns('ld.ext.drawables');
         
+        // utilities here
+        ld.ext.drawables.utils = {
+           pointInside:{
+               // assumes x,y,width & height defined in the component
+               RECTANGLE: function(x,y){
+                  return x >= this.x && y >= this.y &&
+                         x <= (this.x+this.width) && y <= (this.y+this.height);
+               },
+               // assumes: x,y and r - radius
+               CIRCLE: function(x,y){
+                  return (this.x-x)*(this.x-x)+(this.y-y)*(this.y-y) >= this.r*this.r;
+               },
+               
+               // assumes array points
+               POLYGON: function(x,y){
+                  return false;
+               },
+               POLYGON_WINDING_NUMBER: function(x,y){
+                  return false;
+               }
+           }
+           
+        };
         
         
         var PriorityQueue = function(config){
@@ -67,6 +101,12 @@
             
             var runtime = ldrt;
             
+            this.invalidated = false;
+            
+            this.invalidate = function(){
+               this.invalidated = true;
+            };
+            
             this.register = function(cmp){
                 if(cmp.id){
                     components[cmp.id] = cmp;
@@ -77,6 +117,7 @@
                 var id = cmp.id || cmp;
                 cmp = components[id];
                 if(cmp){
+                    // TODO: Remove any events attached to this component
                     delete components[id];
                 }
             };
@@ -177,7 +218,97 @@
             });
             
             
+            var invClock = new libdraw.util.timer.Clock({
+               interval: 10 // 10ms
+            });
+            invClock.addHandler(function(tick){
+               if(this.invalidated && !ldrt.self.started()){
+                     this.invalidated = false;
+                     ldrt.self.next(tick);
+               }
+            },this);
+            invClock.start();
             
+            var dragState = {
+               components:{},
+               dropLocations: [],
+               dragging: false
+            };
+            
+            this.startDragging = function(cmp,event){
+               if(!dragState.components[cmp.id] && components[cmp.id]){
+                  dragState.components[cmp.id] = cmp;
+                  dragState.dragging = true;
+                  var uiSpecs = runtime.self.getUISpecs();
+                  var x = event.pageX - uiSpecs.x;
+                  var y = event.pageY - uiSpecs.y;
+                  cmp.dragging = true;
+                  cmp.trigger('startdrag', [x,y,event]);
+                  console.log('Star dragging cmp: ' + cmp.id);
+               }
+            };
+            
+            
+            this.endDragging = function(cmp, event){
+               if(dragState.components[cmp.id]){
+                  var uiSpecs = runtime.self.getUISpecs();
+                  var x = event.pageX - uiSpecs.x;
+                  var y = event.pageY - uiSpecs.y;
+                  
+                  delete dragState.components[cmp.id];
+                  cmp.dragging = false;
+                  var i = 0;
+                  for(var c in dragState.components){
+                     if(dragState.components.hasOwnProperty(c))
+                        i++;
+                  }
+                  if(i == 0){
+                     dragState.dragging = false;
+                  }
+                  
+                  dragState.dropLocations.sort(function(a,b){return a.priority-b.priority;});
+                  
+                  for(i =0; i < dragState.dropLocations.length; i++){
+                     if(dragState.dropLocations[i].pointInside(x,y)){
+                        cmp.trigger('dropped', [x,y,event,dragState.dropLocations[i]]); // dropped to
+                        dragState.dropLocations[i].trigger('dropped', [x,y,event, cmp]); // dropped into
+                        break;
+                     }
+                  }
+                  cmp.trigger('drag-end', [x,y,event]);
+                  console.log('End dragging cmp: ' + cmp.id);
+               }
+            };
+            $(document).bind('mouseup', function(event){
+               var uiSpecs = runtime.self.getUISpecs();
+                    
+               var x = event.pageX - uiSpecs.x;
+               var y = event.pageY - uiSpecs.y;
+               
+              for(var cmp in dragState.components){
+                  if(dragState.components.hasOwnProperty(cmp)){
+                     self.endDragging(dragState.components[cmp], event);
+                     break;
+                     // TODO: bad handling
+                  }
+              }
+            });
+            this.addDropLocation = function(cmp){
+               if(components[cmp.id]){
+                  cmp.dropLocation = true;
+                  dragState.dropLocations.push(cmp);
+               }
+            };
+            this.removeDropLocation = function(cmp){
+               for(var i; i < dragState.dropLocations.length; i++){
+                  if(dragState.dropLocations[i].id == cmp.id){
+                     dragState.dropLocations.splice(i,1);
+                     cmp.dropLocation = false;
+                     return true;
+                  }
+               }
+               return false;
+            };
         };
         /**
           * Base Managed Object class
@@ -272,7 +403,10 @@
         libdraw.util.ext(ld.ext.drawables.Drawable, {
             
             render: function(rt){},
-            pointInside: function(x,y){return false;}
+            pointInside: function(x,y){return false;},
+            invalidate: function(){ 
+               this.uiManager.invalidate(); 
+            }
             
         });
         
@@ -309,31 +443,42 @@
                
                var self = this;
                var manager = this.uiManager;
-               this.addListener('mousedown', function(){
-                  this.dragging = true;
-               });
-               var dropHandler = function(event){
-                  if(self.dragging){
-                     self.trigger('dropped', event);
+               this.addListener('mousedown', function(eventName,rawRuntimeEvent,originalEvent,runtime){
+                  manager.startDragging(self, originalEvent);
+                  if(this.x !== undefined &&
+                     this.y !== undefined){
+                     var uiSpecs = self.uiManager.getUISpecs();
+                     var x = originalEvent.pageX - uiSpecs.x;
+                     var y = originalEvent.pageY - uiSpecs.y;
+                     self.drag = {
+                        dx: x - this.x,
+                        dy: y - this.y
+                     };
                   }
-                  self.dragging = false;
-               };
+               });
                
-               //this.addListener('mouseout', dropHandler);
-               //this.addListener('mouseleave', dropHandler);
-               manager.on('mouseup', dropHandler);
                manager.on('mousemove', function(event){
                   if(self.dragging){
                      var uiSpecs = self.uiManager.getUISpecs();
                      var x = event.pageX - uiSpecs.x;
                      var y = event.pageY - uiSpecs.y;
                      self.doDrag(x,y);
+                  }else if(self.dropLocation){
+                     var uiSpecs = self.uiManager.getUISpecs();
+                     var x = event.pageX - uiSpecs.x;
+                     var y = event.pageY - uiSpecs.y;
+                     self.trigger('dragover', x,y,event);
                   }
+                  
                });
                
             },
             doDrag: function(toX, toY){
-               console.log('to x=' + toX + '; y=' + toY);
+               if(this.x !== undefined &&
+                  this.y !== undefined){
+                  this.x = (toX-this.drag.dx);
+                  this.y = (toY-this.drag.dy);
+               }
             }
         });
         
@@ -347,7 +492,7 @@
                     });
                     return {
                         getManager: function(){return drawablesManager;},
-                        version: 1.0
+                        version: 1.1
                     };
                 }
             }

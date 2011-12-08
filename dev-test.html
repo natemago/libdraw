@@ -2,13 +2,17 @@
     <head>
         <title>LibDraw Test Page</title>
         <!-- Dependencies -->
-        <script type="text/javascript" src="http://code.jquery.com/jquery-1.4.2.min.js"></script>
+        <script type="text/javascript" src="lib/jquery.js"></script>
         <script type="text/javascript" src="lib/template.js"></script>
-       
+        <script type="text/javascript" src="lib/dsp.js"></script>
+		
+		
         <!-- libDraw includes -->
         <link type="text/css" rel="stylesheet" href="css/libdraw.css"/>
         <script type="text/javascript" src="libdraw.js"></script>
        
+	   
+	    <script type="text/javascript" src="extensions/audio.js"></script>
         <!-- simple example here-->
         <script type="text/javascript">
             $(document).ready(function(){
@@ -18,77 +22,6 @@
                 
                 runtime.setup(function(){
                      
-                     
-                     var M = function(x, y, rad, vn, ang){
-                         this.x = x;
-                         this.y = y;
-                         this.radius = rad;
-                         this.v = vn;
-                         this.ang = ang || 0;
-                         this.incAng = 2*Math.PI/this.v;
-                         
-                         this.points = [];
-                         
-                         this.calculate = function(){
-                           this.points = [];
-                           var r = this.ang;
-                           for(var i = 0; i < this.v; i++){
-                              this.points.push([
-                                this.radius*Math.cos(r) + this.x,
-                                this.radius*Math.sin(r) + this.y
-                              ]);
-                              r+=this.incAng;
-                           }
-                         };
-                         
-                         this.render = function(runtime){
-                           this.calculate();
-                           runtime.complex(this.points, true);
-                         };
-                     };
-
-                     var MM = function(x, y, rad1, rad2, vn, ang){
-                        ang = ang ||0;
-                        this.m1 = new M(x, y, rad1, vn, ang);
-                        this.m2 = new M(x, y, rad2, vn, ang + this.m1.incAng/2);
-                        
-                        this.x = x;
-                        this.y = y;
-                        this.rad1 = rad1;
-                        this.rad2 = rad2;
-                        this.v = vn;
-                        this.ang = ang;
-                        
-                        
-                        this.points = [];
-                        this.calculate = function(){
-                           this.m1.x = this.m2.x = this.x;
-                           this.m1.y = this.m2.y = this.y;
-                           this.m1.ang = this.ang;
-                           this.m2.ang = this.ang + this.m1.incAng/2;
-                           this.m1.radius = this.rad1;
-                           this.m2.radius = this.rad2;
-                           
-                           this.m1.calculate();
-                           this.m2.calculate();
-                           this.points = [];
-                           for(var i = 0; i < vn; i++){
-                              this.points.push(this.m1.points[i]);
-                              this.points.push(this.m2.points[i]);
-                           }
-                        };
-                        
-                        this.render = function(runtime){
-                           this.calculate();
-                           runtime.complex(this.points, true);
-                        };
-                        
-                     };
-
-
-                     //this.triangle = new MM(100,100, 30, 20, 3);
-                     
-                     this.animationStart = this.millis();
 
                 });
                 
@@ -103,33 +36,94 @@
                        this.trace("Help - error!");
                      });
                 */
+               
+				var data = {
+					duration: 0,
+					time: 0,
+					channels: 0,
+					rate: 0,
+					frameBufferLenght: 0
+				};
+				
+				var fft;
+				
+				
+				var spectrum = {
+					bars: [],
+					render: function(rt){
+						for(var i = 0; i < this.bars.length; i++){
+							var b = this.bars[i];
+							var bx = this.x+(this.barWidth+this.xdiff)*i;
+							var by = this.y;
+							var bw = this.barWidth;
+							var bh = b*this.zoomCoef;
+							
+							rt.strokeSize(0);
+							rt.fill(0,0,255);
+							rt.rect(bx,by,bw,bh);
+						}
+					},
+					x: 100,
+					y: 200,
+					barWidth: 4,
+					xdiff: 2,
+					zoomCoef: 100
+				};
+				
+				
+				a = _a.createAudio({
+					controls: true,
+					//src: 'aphex.ogg',
+					events:{
+						
+						'loadedmetadata':function(){
+							
+							data.duration = a.duration;
+							data.channels = a.mozChannels;
+							data.rate = a.mozSampleRate;
+							data.frameBufferLength = a.mozFrameBufferLength;
+							try{
+							fft = new FFT(data.frameBufferLength / data.channels, data.rate);
+							}catch(e){
+								console.log(e);
+							}
+						}
+					}
+				});
+				
+               a.addEventListener('MozAudioAvailable',function(e){
+							debugger;
+							try{
+							data.time = a.time;
+							var fb = e.frameBuffer;
+							var signal = Float32Array(fb.length / data.channels);
+							
+							for (var i = 0, fbl = data.frameBufferLength / 2; i < fbl; i++ ) {
+							  // Assuming interlaced stereo channels,
+							  // need to split and merge into a stero-mix mono signal
+							  signal[i] = (fb[2*i] + fb[2*i+1]) / 2;
+							}
+							
+							fft.forward(signal);
+							
+							for (var i = 0; i < fft.spectrum.length; i++ ) {
+								spectrum.bars[i] = fft.spectrum[i];
+							}
+							}catch(ex){
+								console.log(ex);
+							}
+							
+						}, false);
                 
-                
-                var Particle = function(x, y, rad, mass, speed){
-                  this.x = x;
-                  this.y = y;
-                  this.rad = rad;
-                  this.mass = mass;
-                  this.speed = speed;
-                  
-                  
-                  this.render = function(rt){
-                     rt.circle(this.x,this.y,this.rad);
-                     var x = this.x + this.speed[0]*this.animationStart/1000;
-                     var y = this.y + this.speed[1]*this.animationStart/1000;
-                     
-                     
-                  };
-                };
-                
-                
+                a.src = 'aphex.ogg';
                 
                 runtime.exec(function(rt){
-                  
-                //  this.triangle.rad1 += 30*Math.sin(this.frame/4);
-
-                  //this.triangle.render(this);
-                    
+                    rt.text('Channels: ' + data.channels, 100, 100);
+					rt.text('Rate: ' + data.rate, 100, 112);
+					rt.text('BuffLen: ' + data.frameBufferLength, 100, 124);
+                
+                    rt.text(Math.floor(data.time) + ' - ' + Math.floor(data.duration), 100,136);
+					spectrum.render(rt);
                   
                 });
                 
@@ -143,7 +137,7 @@
         </script>
     </head>
     <body>
-      <!--
+      <!---->
         <canvas id="content-canvas-1" style="background: url(images/back-02.png) repeat;"></canvas>
 
         <div id="" style="display: none;background:url(images/back-01.png) repeat-x;color: gray; font: 12px sans-serif; bottom: 0; position: absolute; width: 80%; border-top: 1px solid #4999ff;">
@@ -159,9 +153,9 @@
                </div>
             </div>
         </div>
-        -->
         
-        <audio controls src="file:///media/sda6/itni_s_Doks/media/muzik/Vangelis - [1973] L'Apocalypse des Animaux/Vangelis - [1979] Opera Sauvage/VANGELIS - 06 - Irlande.mp3"></audio>
+        
+        
         
     </body>
 </html>
