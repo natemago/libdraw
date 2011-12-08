@@ -1,0 +1,167 @@
+<html>
+    <head>
+        <title>LibDraw Test Page</title>
+        <!-- Dependencies -->
+        <script type="text/javascript" src="http://code.jquery.com/jquery-1.4.2.min.js"></script>
+        <script type="text/javascript" src="lib/template.js"></script>
+       
+        <!-- libDraw includes -->
+        <link type="text/css" rel="stylesheet" href="css/libdraw.css"/>
+        <script type="text/javascript" src="libdraw.js"></script>
+       
+        <!-- simple example here-->
+        <script type="text/javascript">
+            $(document).ready(function(){
+                var canvas = $('#content-canvas-1')[0];
+                
+                runtime = new libdraw.Runtime({canvas: canvas});
+                
+                runtime.setup(function(){
+                     
+                     
+                     var M = function(x, y, rad, vn, ang){
+                         this.x = x;
+                         this.y = y;
+                         this.radius = rad;
+                         this.v = vn;
+                         this.ang = ang || 0;
+                         this.incAng = 2*Math.PI/this.v;
+                         
+                         this.points = [];
+                         
+                         this.calculate = function(){
+                           this.points = [];
+                           var r = this.ang;
+                           for(var i = 0; i < this.v; i++){
+                              this.points.push([
+                                this.radius*Math.cos(r) + this.x,
+                                this.radius*Math.sin(r) + this.y
+                              ]);
+                              r+=this.incAng;
+                           }
+                         };
+                         
+                         this.render = function(runtime){
+                           this.calculate();
+                           runtime.complex(this.points, true);
+                         };
+                     };
+
+                     var MM = function(x, y, rad1, rad2, vn, ang){
+                        ang = ang ||0;
+                        this.m1 = new M(x, y, rad1, vn, ang);
+                        this.m2 = new M(x, y, rad2, vn, ang + this.m1.incAng/2);
+                        
+                        this.x = x;
+                        this.y = y;
+                        this.rad1 = rad1;
+                        this.rad2 = rad2;
+                        this.v = vn;
+                        this.ang = ang;
+                        
+                        
+                        this.points = [];
+                        this.calculate = function(){
+                           this.m1.x = this.m2.x = this.x;
+                           this.m1.y = this.m2.y = this.y;
+                           this.m1.ang = this.ang;
+                           this.m2.ang = this.ang + this.m1.incAng/2;
+                           this.m1.radius = this.rad1;
+                           this.m2.radius = this.rad2;
+                           
+                           this.m1.calculate();
+                           this.m2.calculate();
+                           this.points = [];
+                           for(var i = 0; i < vn; i++){
+                              this.points.push(this.m1.points[i]);
+                              this.points.push(this.m2.points[i]);
+                           }
+                        };
+                        
+                        this.render = function(runtime){
+                           this.calculate();
+                           runtime.complex(this.points, true);
+                        };
+                        
+                     };
+
+
+                     //this.triangle = new MM(100,100, 30, 20, 3);
+                     
+                     this.animationStart = this.millis();
+
+                });
+                
+                /*
+                this.runtime.on('keydown', function(){
+                       if(this.keyCode == 38){
+                          this.triangle.ang+=0.1;
+                       }else if(this.keyCode == 40){
+                          this.triangle.ang-=0.1;
+                       }
+                       this.trace("pavel");
+                       this.trace("Help - error!");
+                     });
+                */
+                
+                
+                var Particle = function(x, y, rad, mass, speed){
+                  this.x = x;
+                  this.y = y;
+                  this.rad = rad;
+                  this.mass = mass;
+                  this.speed = speed;
+                  
+                  
+                  this.render = function(rt){
+                     rt.circle(this.x,this.y,this.rad);
+                     var x = this.x + this.speed[0]*this.animationStart/1000;
+                     var y = this.y + this.speed[1]*this.animationStart/1000;
+                     
+                     
+                  };
+                };
+                
+                
+                
+                runtime.exec(function(rt){
+                  
+                //  this.triangle.rad1 += 30*Math.sin(this.frame/4);
+
+                  //this.triangle.render(this);
+                    
+                  
+                });
+                
+                runtime.init();
+                runtime.start();
+                runtime.showFps(true);
+               
+                
+            });
+            
+        </script>
+    </head>
+    <body>
+      <!--
+        <canvas id="content-canvas-1" style="background: url(images/back-02.png) repeat;"></canvas>
+
+        <div id="" style="display: none;background:url(images/back-01.png) repeat-x;color: gray; font: 12px sans-serif; bottom: 0; position: absolute; width: 80%; border-top: 1px solid #4999ff;">
+            <div style="font: bold 14px; padding: 4px; text-align: left;">Debug Console</div>
+            <div style="padding: 5px;">
+               <div class="text-display" style="background: url(images/back-02.png) repeat;">
+                  test<br/>
+                  test
+               </div>
+               <div style="text-align: right; padding: 4px;">
+                  <input type="button" class="clear-button" style="font-size: 10px;" value="Clear"/>
+                  <input type="button" class="close-button" style="font-size: 10px;" value="Close"/>
+               </div>
+            </div>
+        </div>
+        -->
+        
+        <audio controls src="file:///media/sda6/itni_s_Doks/media/muzik/Vangelis - [1973] L'Apocalypse des Animaux/Vangelis - [1979] Opera Sauvage/VANGELIS - 06 - Irlande.mp3"></audio>
+        
+    </body>
+</html>

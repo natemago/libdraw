@@ -1,0 +1,109 @@
+body{
+  margin: 0 0 0 0;
+  padding: 0 0 0 0;
+}
+
+.ld-icon{
+   width: 48;
+   height: 48;
+}
+
+.ld-icon-large{
+   width: 64;
+   height: 64;
+}
+.ld-icon-normal{
+   width: 24;
+   height: 24;
+}
+
+.ld-icon-small{
+   width: 16;
+   height: 16;
+}
+
+.ld-icon-up{
+   background: url(images/up.png) no-repeat;
+}
+
+.ld-icon-down{
+   background: url(images/down.png) no-repeat;
+}
+
+.ld-icon-none{
+   background: url(images/none.png) no-repeat;
+}
+
+.ld-icon-console{
+   background: url(images/icon-console.png) no-repeat;
+}
+
+.ld-icon-close{
+   background: url(images/icon-close.png) no-repeat;
+}
+
+.ld-display{
+   position: absolute;
+   top: 10;
+   right: 10;
+   border: solid 2px black;
+   background-color: #b3d8e6;
+   padding:10px;
+   background-image: url(images/libdraw-background.png);
+   background-repeat: repeat;
+}
+
+.ld-content{
+   font-size: 18px;
+   font-family: sans;
+   color: gray;
+}
+
+.console-wrapper{
+   background:url(../images/back-01.png) repeat-x;
+    background-color: white;
+    color: gray; 
+    font: 12px sans-serif;
+    border: 1px solid #4999ff;
+    padding: 3px;
+    margin: 0px;
+}
+
+.console-header{
+   padding: 1px;
+   background-color: black;
+   font: bold 14px sans-serif;
+   color: gray;
+}
+
+.console-content{
+   background-color: black;
+   padding: 5px;
+   font-size: 12px;
+   font-family: monospace;
+   color:gray;
+}
+
+.console-display{
+   border: solid 1px #dddddd; 
+   padding: 5px;
+   color: gray;
+   overflow: auto;
+   font: 12px monospace;
+}
+
+.console-title{
+   background-color: black;
+   font: bold 14px sans-serif;
+   color: gray;
+}
+/*
+#C2C2C2
+#F2F2F2
+#B8B8B8
+#8A8A8A
+#595958
+
+
+*/
+

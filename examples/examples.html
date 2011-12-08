@@ -1,0 +1,264 @@
+<html>
+  <head>
+       <title>LibDraw Test Page</title>
+        <!-- Dependencies -->
+	<link type="text/css" rel="stylesheet" href="css/dark-hive/jquery-ui-1.8.1.custom.css"/>
+   <!--
+   <link type="text/css" rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1/themes/black-tie/jquery-ui.css"/>
+   -->
+   
+   
+        <script type="text/javascript" src="http://code.jquery.com/jquery-1.4.2.min.js"></script>
+	<script type="text/javascript" src="lib/jquery-ui-1.8.1.custom.min.js"></script>
+        <script type="text/javascript" src="../lib/template.js"></script>
+       <script type="text/javascript">
+         __LIBDRAW_DEBUG__= true;
+       </script>
+        <!-- libDraw includes -->
+        <link type="text/css" rel="stylesheet" href="../css/libdraw.css"/>
+        <script type="text/javascript" src="../libdraw.js"></script>
+	<script type="text/javascript" src="examples.js"></script>
+	
+	<style type="text/css">
+			/*demo page css*/
+			body{ background: black; margin: 10px;}
+			ul.icons {margin: 0; padding: 0;}
+			ul.icons li {margin: 2px; position: relative; padding: 4px 0; cursor: pointer; float: left;  list-style: none;}
+			ul.icons span.ui-icon {float: left; margin: 0 4px;}
+		</style>	
+	
+        <!-- simple example here-->
+        <script type="text/javascript">
+	    $(document).ready(function(){
+	       var canvas = $('#main-canvas')[0];
+	       
+	       var runtime = new libdraw.Runtime({canvas: canvas});
+	       runtime.setup(function(){
+		  this.background(0x9b,0x9a,0x92);
+	       });
+	       runtime.init();
+	       runtime.start();
+	       runtime.showFps(true);
+	       
+	       
+	       
+	       //hover states on the static widgets
+	      $('ul.icons li').hover(
+		      function() { $(this).addClass('ui-state-hover'); }, 
+		      function() { $(this).removeClass('ui-state-hover'); }
+	      );
+
+	       
+	      editor = new libdraw.examples.ui.CodeEditor({
+		 element: '#editor-1',
+		 runtime: runtime,
+		 groups: [
+         {
+		      label: 'Simple Examples',
+		      examples:[
+		         {
+		             src: 'src/hello-world.html',
+		             title: 'Hello World'
+		          },
+		          {
+		             src: 'src/basic.html',
+		             title: 'The Basic Example'
+		          },
+		          {
+		             src: 'src/complex.html',
+		             title: 'OOP and Complex Shapes'
+		          },
+		          {
+		             src: 'src/fun.html',
+		             title: 'Fun'
+		          },
+		          {
+		             src: 'src/plotter.html',
+		             title: 'Plotter'
+		          },
+		          {
+		            src: 'src/balls.html',
+		            title: 'Multiple balls rotating'
+		          },
+                {
+                  src: 'src/line-noise.html',
+                  title: 'Line Noise'
+                },
+                {
+                  src: 'src/pi.html',
+                  title: 'Calulate Pi'
+                }
+		      ]
+         },
+         {
+            label: 'Functions',
+            examples: [
+		       
+		       {
+		          src:'src/functions/frameRate.html',
+		          title: 'function: frameRate'
+		       },
+		       {
+		          src:'src/functions/size.html',
+		          title: 'function: size'
+		       },
+		       {
+		          src:'src/functions/background.html',
+		          title: 'function: background'
+		       }
+		      ]
+		    }
+		  ]
+		  });
+	      
+	      libdraw._console.bindTo('#examples-console');
+         
+         
+         var backgroundStyle = {
+            "ui-lightness": 'gray',
+            "smoothness": 'white',
+            "sunny": '#404040',
+            "start": 'white',
+            "redmond": 'white',
+            "le-frog": 'gray',
+            "flick": '#404040',
+            "pepper-grinder": 'white',
+            "cupertino": '#404060',
+            "south-street": '#406040',
+            "blitzer": 'gray',
+            "humanity": 'white',
+            "hot-sneaks": 'white',
+            "excite-bike": 'white',
+         };
+         
+         $('#themes').change(function(){
+            var theme = this.value;
+            var node = undefined;
+            if(theme){
+            
+               node = $('<link type="text/css" rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1/themes/' +theme +'/jquery-ui.css"/>')[0];
+            }else{
+               node = $('<link type="text/css" rel="stylesheet" href="css/dark-hive/jquery-ui-1.8.1.custom.css"/>')[0];
+            }
+            if(node)document.body.appendChild(node);
+            if(backgroundStyle[theme]){
+               $(document.body).css('background', backgroundStyle[theme]);
+            }else{
+               $(document.body).css('background', 'black');
+            }
+         });
+	    });
+	    
+	    
+	    
+	    
+	    
+	</script>
+  </head>
+  <body>
+      <div class="ui-widget" style="height: 100%;" id="editor-1">
+	<div class="ui-widget-header ui-corner-top" style="padding: 4px;"> LibDraw Code Editor</div>
+	<div class="ui-widget-content ui-corner-bottom" style="padding: 20px;">
+	      <table style="width: 100%;">
+		<tr>
+		  <td style="width: 1%; padding: 5px; vertical-align: top;">
+		    <div class="ui-widget">
+		      <div class="ui-widget-header ui-corner-top" style="padding: 4px;">Canvas</div>
+		      <div class="ui-widget-content ui-corner-bottom" style="padding: 4px;">
+			<canvas id="main-canvas" style=""></canvas>
+			<div id="buttons">
+			  <ul id="" class="icons ui-widget ui-helper-clearfix">
+			    <li class="ui-state-default ui-corner-all" title="Execute Code"><span class="ui-icon ui-icon-play"></span></li>
+			    <li class="ui-state-default ui-corner-all" title="Pause Runtime"><span class="ui-icon ui-icon-pause"></span></li>
+			    <li class="ui-state-default ui-corner-all" title="Stop Runtime"><span class="ui-icon ui-icon-stop"></span></li>
+			    <li class="ui-state-default ui-corner-all" title="Show/Hide Output"><span class="ui-icon ui-icon-lightbulb"></span></li>
+			  </ul>
+			  
+			</div>
+		    <div>
+		      <div class="ui-widget custom-output" style="display: none; width: 100%;" id="examples-console">
+		         <div class="ui-widget-header ui-corner-top" style="font: bold 14px; padding: 4px; text-align: center;">Output</div>
+               <div class="ui-widget-content ui-corner-bottom" style="padding: 5px;">
+                  <div class="text-display" style=" background-color: black;"></div>
+                  <div style="text-align: right; padding: 4px;">
+                     <input type="button" class="clear-button" style="font-size: 10px;" value="Clear Output"/>
+                     <input type="button" class="close-button" style="font-size: 10px;" value="Close Output"/>
+                  </div>
+               </div>
+		      </div>
+		    </div>
+		  </td>
+		  <td style="vertical-align: top; padding: 5px;">
+		    <div class="ui-widget">
+		      <div class="ui-widget-header ui-corner-top" style="padding: 4px;">Source Code</div>
+		      <div class="ui-widget-content ui-corner-bottom" style="padding: 10px;">
+			<div>
+         <!--
+            <table>
+               <tr>
+                  <td> -->
+                     <span class="ui-widget loader-wrapper"></span>
+                     <!--
+                  </td>
+                  <td>-->
+                     <ul id="" class="icons ui-widget ui-helper-clearfix" style="float: right;">
+                     <li class="ui-state-default ui-corner-all" title="Reload Current Example">
+                        <span class="ui-icon ui-icon-refresh reload-code"></span>
+                     </li>
+                     <li class="ui-state-default ui-corner-all" title="Reset Code"><span class="ui-icon ui-icon-cancel"></span></li>
+                     </ul><!--
+                  </td>
+            </tr>
+           </table>-->
+			</div>
+			 Setup:<br/>
+			 <textarea class="setup-editor" style="width: 100%; border:  solid 1px gray; height: 150px; padding: 3px;  font: 12px Mono;"></textarea>
+			
+			 Exec:<br/>
+			 <textarea class="exec-editor" style="width: 100%; border: solid 1px gray; height: 250px; padding: 3px; font: 12px Mono;"></textarea>
+          
+          
+          
+		      </div>
+            <div style="text-align: right;" >
+               <select id="themes">
+                  <optgroup label="Themes">
+                     <option value="">Default</option>
+                     <option value="ui-lightness">UI Lightness</option>
+                     <option value="ui-darkness">UI Darkness</option>
+                     <option value="smoothness">Smoothness</option>
+                     <option value="start">Start</option>
+                     <option value="redmond">Redmond</option>
+                     <option value="sunny">Sunny</option>
+                     <option value="overcast">Overcast</option>
+                     <option value="le-frog">Le Frog</option>
+                     <option value="flick">Flick</option>
+                     <option value="pepper-grinder">Pepper Grinder</option>
+                     <option value="eggplant">Eggplant</option>
+                     <option value="dark-hive">Dark Hive</option>
+                     <option value="cupertino">Cupertino</option>
+                     <option value="south-street">South Street</option>
+                     <option value="blitzer">Blitzer</option>
+                     <option value="humanity">Humanity</option>
+                     <option value="hot-sneaks">Hot Sneaks</option>
+                     <option value="excite-bike">Excite Bike</option>
+                     <option value="vader">Vader</option>
+                     <option value="dot-luv">Dot Luv</option>
+                     <option value="mint-choc">Mint Choc</option>
+                     <option value="black-tie">Black Tie</option>
+                     <option value="trontastic">Trontstic</option>
+                     <option value="swanky-purse">Swnky Purse</option>
+                  </optgroup>
+               </select>
+            </div>
+		    </div>
+		  </td>
+		</tr>
+	      </table>
+	</div>
+      </div>
+      
+
+      
+  </body>
+</html>
