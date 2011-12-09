@@ -57,7 +57,15 @@
          }
          
       })(),
-      nop: function(){}
+      nop: function(){},
+      each: function(col, callback, scope){
+         scope = scope || window;
+         var i = 0;
+         for(k in col){
+            callback.call(scope, col[k], k, i);
+            i++;
+         }
+      }
    };
    
    
@@ -441,8 +449,68 @@
         }
    };
    
+   /**
+    * Base class for initializing objects
+    *
+    */
+   var InitializingObject = function(config){
+      libdraw.util.ext(this, config);
+      this.init();
+   };
+   libdraw.util.ext(InitializingObject,{
+      init: clean.nop 
+   });
+   
+   
+   var BaseObservable = function(config){
+      BaseObservable.superclass.constructor.call(this, config);
+   };
+   
+   libdraw.util.ext(BaseObservable, InitializingObject, {
+      init: function(){
+         this.el = this.el || {};
+         this.listeners = {};
+      },
+      addListener: function(name, callback, scope){
+         scope = scope || this;
+         var wrapper = function(){
+            callback.apply(scope, arguments);
+         };
+         $(this.el).bind(name, wrapper);
+         var ls = this.listeners[name];
+         if(!ls)
+            ls = this.listeners[name] = {};
+         ls[callback] = wrapper;
+      },
+      removeListener: function(name, callback){
+         var ls = this.listeners[name];
+         if(ls){
+            if(callback){
+               var wrapper = ls[callback];
+               if(wrapper){
+                  $(this.el).unbind(name, wrapper);
+               }
+            }else{
+               $(this.el).unbind(name);
+            }
+         }
+      },
+      trigger: function(){
+         var name = arguments[0];
+         if(!name || !this.listeners[name])
+            return;
+            
+         var data = [];
+         for(var i = 1; i < arguments.length;i++){
+            data.push(arguments[i]); // FIXME: ugly ugly!!!
+         }
+         $(this.el).trigger(name, data);
+      }
+   });
+   
    
    var GraphicsContext = function(config){
+      GraphicsContext.superclass.constructor.call(this, config);
       var state = {
          fill: 'rgba(0,0,0,0)',
          stroke: 'rgba(0,0,0,0)',
@@ -517,17 +585,19 @@
       
       this.frameRate = function(fps){
         state.fps = fps;
-        // TODO: trigger an event to change the frame-rate
+        this.trigger('framerate', fps);
       };
       
       this.size = function(width, height){
-        state.width = width;
-        state.height = height;
-        // TODO: trigger an event to change the size of the canvas
+         state.width = width;
+         state.height = height;
+         this.trigger('resize', width, height);  
       }
       
       
    };
+   
+   libdraw.util.ext(GraphicsContext, BaseObservable);
    
    
    libdraw.Runtime = function(){
