@@ -8,7 +8,14 @@
 (function(){
    // enveloped variables
    var seqId = 0;
-   
+   var __graphics = {
+      supported: false,
+      contextTypes: {
+         '2d': false,
+         'webgl': false,
+         'experimental-webgl': false
+      }
+   };
    
    var ugly = {
       extend:function(a,b, c){
@@ -36,10 +43,30 @@
       },
       isFunction: function(t){
          return typeof(t) == 'function';
+      },
+      testSupported: function(){
+         clean.each(__graphics.contextTypes, function(isSupported, name){
+            try{
+               var c = clean.createCanvas();  
+               try{
+                  var ctx = c.getContext(name);
+                  if(ctx){
+                     __graphics.contextTypes[name] = true;
+                     console.log(ctx);
+                  }
+               }catch(e){
+                  console.log(e);
+               }
+            }catch(e){
+               console.error(e);
+               // no graphics supported
+               return false;
+            }
+         });
       }
      
    };
-   
+   U = ugly;
    
    var clean = {
       requestAnimationFrame: (function(){
@@ -62,12 +89,55 @@
          scope = scope || window;
          var i = 0;
          for(k in col){
-            callback.call(scope, col[k], k, i);
+            var r = callback.call(scope, col[k], k, i);
+            if(r === false)
+               break;
             i++;
          }
+      },
+      createCanvas: function(id,x,y,width,height,position,background,visible,extraClass){
+         id = id || libdraw.getId('canvas');
+         
+         var canvas = document.createElement('canvas');
+         canvas.id = id;
+         canvas.className = extraClass || '';
+         if(position){
+            canvas.style.position = position;
+         }
+         if(x){
+            canvas.style.left=x+'px';
+         }
+         if(y){
+            canvas.style.top=y+'px';
+         }
+         if(width){
+            canvas.style.width=width;
+         }
+         if(height){
+            canvas.style.height=height;
+         }
+         if(background){
+            canvas.style.background=background;
+         }
+         if(!visible){
+            canvas.style.display='none';
+         }
+         return canvas;
+      },
+      canCreateGraphics: function(){
+         return __graphics.supported;
+      },
+      getSupportedGraphics: function(){
+         var supported = [];
+         clean.each(__graphics.contextTypes, function(isSupported, name){
+            if(isSupported)
+               supported.push(name);
+         });
+         return supported;
       }
    };
    
+   C = clean;
    
    var necessary = {
       measure: function(task, repetitions, runs){
@@ -591,18 +661,233 @@
       this.size = function(width, height){
          state.width = width;
          state.height = height;
-         this.trigger('resize', width, height);  
-      }
+         this.trigger('resize', width, height);
+      };
       
+      this.update = function(){
+         // update the time for example...
+      };
       
    };
    
    libdraw.util.ext(GraphicsContext, BaseObservable);
    
    
-   libdraw.Runtime = function(){
-      
+   var Canvas = function(config){
+      Canvas.superclass.constructor.call(this, config);
+   };
+   libdraw.util.ext(Canvas, BaseObservable,{
+      init: function(){
+         Canvas.superclass.init.call(this);
+         this._el = $(this.el);
+      },
+      getPosition:function(){
+         var o = this._el.offset();
+         return {
+            x: o.left,
+            y: o.top
+         };
+      },
+      getSize: function(){
+         return {
+            width: this._el.width(),
+            height: this._el.height()
+         };
+      },
+      move: function(x,y){
+         this._el.offset({
+            top: y,
+            left: x
+         });
+         this.trigger('move',x,y);
+      },
+      resize: function(width, height){
+         this._el.width(width).height(height);
+         this.trigger('resize', width, height);
+      },
+      getContext: function(type){
+         return this.el.getContext(type);
+      },
+      focus: function(f){
+         f = !(!f);
+         this.focused = f;
+         this.trigger(f?'focus':'blur');
+      }
+   });
+   
+   var Layer = function(config){
+      Layer.superclass.constructor.call(this, config);
    };
    
+   libdraw.util.ext(Layer, BaseObservable, {
+      init: function(){
+         Layer.superclass.init.call(this);
+         if(this.timerSpec && !this.timerSpec.onDemand){
+            if(this.timerSpec.onDemand){
+               this.onDemand = true;
+            }else if(this.timerSpec.clock){
+               this.clock = this.timerSpec.clock;
+            }else{
+               this.clock = new libdraw.util.timer.Clock({
+                  interval: this.timerSpec.interval,
+                  mode: this.timerSpec.mode,
+                  element: this.timerSpec.element || document
+               });
+               // add the handler
+               this.clock.addHandler(this.cycle, this);
+            }
+         }
+         var uiSpec = this.spec;
+         var element = this.bindToEl;
+         var canvas = undefined;
+         if(element){
+            if(element.nodeName != 'CANVAS'){
+               uiSpec.x = $(element).offset().left;
+               uiSpec.y = $(element).offset().top;
+               uiSpec.width = $(element).width();
+               uiSpec.height = $(element).height();
+               canvas = clean.createCanvas(element.id, uiSpec.x, uiSpec.y, 
+                  uiSpec.width, uiSpec.height, 'absolute', element.className);
+            }else{
+               canvas = element;
+            }
+         }
+         this.canvas = new Canvas({
+            el: canvas
+         });
+      },
+      cycle: function(tick){
+         if(this.drawing){
+            return; // still drawing previous cycle - FPS will drop... (could happen for mode 'interval' or 'on-demand')
+         }
+         this.context.update();
+         this.drawing = true;
+         for(var i = 0; i < this.handlers.length; i++){
+            this.handlers[i].call(this.context, this.context, tick, this.runtime);
+         }
+         this.drawing = false;
+      },
+      start: function(){
+         if(!this.onDemand)
+            this.clock.start()
+      },
+      stop: function(){
+         if(!this.onDemand)
+            this.clock.stop()
+      },
+      pause: function(){
+         if(!this.onDemand)
+            this.clock.pause();
+      },
+      resume: function(){
+         if(!this.onDemand)
+            this.clock.resume();
+      },
+      invalidate: function(){
+         if(this.onDemand)
+            this.cycle(0);
+      },
+      schedule: function(handler){
+         this.handlers.push(handler);
+      },
+      remove: function(handler){
+         var index = -1;
+         clean.each(this.handlers, function(h, i){
+            if(h == handler){
+               index = i;
+               return false;
+            }
+         });
+         this.handlers.splice(index, 1);
+      }
+   });
+   
+   
+   var Runtime = function(config){
+      Runtime.superclass.constructor.call(this, config);
+   };
+   
+   libdraw.util.ext(Runtime, BaseObservable, {
+      init: function(){
+         Runtime.superclass.init.call(this);
+         this.layers = new function(){
+            var layers = [];
+            var nameIndex = {};
+            var _sorter = function(a,b){
+               return a.index-b.index;
+            };
+            this.add = function(l){
+               l.index = l.index || 0;
+               if (! (l.name in nameIndex) ){
+                  layers.push(l);
+                  layers.sort(_sorter);
+                  return l;
+               }
+               return false;
+            };
+            
+            this.remove = function(l){
+               if (!l) return;
+               if( l.name in nameIndex){
+                  for(var i = 0; i < layers.length; i++){
+                     if(layers[i] == l){
+                        layers.splice(i,1);
+                        break;
+                     }
+                  }
+                  delete nameIndex[l.name];
+               }
+            };
+            
+            this.each = function(callback, scope){
+               clean.each(layers, callback, scope);
+            };
+            
+            this.size = function(){
+               return layers.length;
+            };
+            
+            this.get = function(param){
+               if(typeof(param) == 'string') return nameIndex[param];
+               if(typeof(param) == 'number') return layers[param];
+               return undefined;
+            };
+         };
+      },
+      /*
+      config = {
+         name: 'string',
+         index: numeric,
+         bindToEl: HTMLElement,
+         spec:{ (optional) - if not specified use global ui specification, will create new canvas though
+            x: numeric,
+            y: numeric,
+            width: numeric,
+            height: numeric
+         },
+         timer:{ (optional) - if not specified, use master-clock
+            interval: numeric,
+            mode: 'interval|timeout|frame',
+            element: HTMLElement (optional),
+            clock: libdra.util.timer.Clock (optional) - only if you want to use specific clock
+         }
+      }
+      
+      */
+      layer: function(config){
+         if(typeof(config) == 'string' || typeof(config) == 'number')
+            return this.layers.get(config);
+         
+         var layer = this.layers.add(new Layer({
+            name: config.name,
+            index: config.index,
+            spec: config.spec, // TODO: merge with existing one...
+            timerSpec: config.timer, 
+            clock: config.timer ? undefined : this.clock
+         }));
+
+         return layer;
+      },
+   });
    
 })();
