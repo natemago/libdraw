@@ -18,7 +18,7 @@
    };
    
    var ugly = {
-      extend:function(a,b, c){
+      _extend:function(recursive, a,b, c){
          if(!b) return;
          a = a || {};
          c = c || {};
@@ -34,13 +34,19 @@
                      }
                   }
                   c[b[p]].push(b);
-                  ugly.extend(a[p],b[p],c);
+                  if(recursive){
+                     ugly.extend(a[p],b[p],c);
+                  }else{
+                     a[p]=b[p];
+                  }
                }else{
                   a[p] = b[p];
                }
             }
          }
       },
+      extendr: function(a,b,c){ugly._extend(true, a,b,c);},
+      extend: function(a,b,c){ugly._extend(false,a,b,c);},
       isFunction: function(t){
          return typeof(t) == 'function';
       },
@@ -250,15 +256,21 @@
    N = necessary;
    // libdraw namespace:
    
+   
+   // this object will be registered on window scope...
+   var _LD = function(){};
+   
    libdraw = {
         version: '0.3.0',
         description: 'LibDraw JavaScript library',
         ext:{}, // extension packages
         extend: function(extName, extension){
+            
             var ex = typeof(extension) == 'function' ? extension.call(this, libdraw.version) : extension;
             if(ex){
                 libdraw.ext[extName] = ex;
             }
+            
         },
         getId: function(prefix){
             return (prefix || 'gen') + '-' + (seqId++);
@@ -588,7 +600,8 @@
          width: 300,
          height: 225,
          background: 'rgba(0,0,0,0)',
-         fontStyle: '12px sans-serif'
+         fontStyle: '12px sans-serif',
+         canvas: config.canvas
       };
       
       this.graphicsType = config.graphicsType || '2d';
@@ -632,6 +645,7 @@
             state.fill = this.color.apply(this, arguments);
          else
             state.fill = arguments[0];
+         this.ctx.fillStyle = state.fill;
       };
       
       this.stroke = function(){
@@ -639,19 +653,64 @@
             state.stroke = this.color.apply(this, arguments);
          else
             state.stroke = arguments[0];
+         this.ctx.strokeStyle = state.stroke;
       };
       
       this.strokeSize = function(s){
          state.lineWidth = s;
+         this.ctx.lineWidth = state.lineWidth;
+      };
+      
+      this.cap = function(cap){
+         // "butt", "round", "square" (default "butt")
+         state.cap = cap;
+         this.ctx.lineCap = cap;
+      };
+      
+      this.lineJoin = function(type){
+         // "round", "bevel", "miter" (default "miter")
+         state.lineJoin = type;
+         this.ctx.lineJoin = type;
+      };
+      
+      this.setFont = function(fontStyle){
+         state.fontStyle = fontStyle;
+         this.ctx.font = fontStyle;
       };
       
       this.background = function(){
-        if(arguments.length > 1){
-            state.background = this.color.apply(this, arguments);
-        }else{
-            state.background = arguments[0];
-        }
+         var background = undefined;
+         if(arguments.length > 1){
+            background = this.color.apply(this, arguments);
+         }else{
+            background = arguments[0];
+         }
+         if(state.background != background){
+            state.canvas.style('background', background);
+            state.background = background;
+         }
+         this.ctx.clearRect(0,0,state.width, state.height);
       };
+      
+      
+      
+      this.rect = function(x,y,w,h){
+         this.ctx.beginPath();
+         this.ctx.fillRect(x,y,w,h);
+         if(state.lineWidth)
+            this.ctx.strokeRect(x,y,w,h);
+         this.ctx.closePath();
+      };
+      
+      this.circle = function(x,y,r){
+         this.ctx.beginPath();
+         this.ctx.arc(x,y,r,0, 2*Math.PI, true);
+         this.ctx.fill();
+         if(state.lineWidth)
+            this.ctx.stroke();
+         this.ctx.closePath();
+      }
+      
       
       this.frameRate = function(fps){
         state.fps = fps;
@@ -666,7 +725,19 @@
       
       this.update = function(){
          // update the time for example...
+         state.DATE = new Date();
       };
+      
+      // date functions
+      this.millis  = function(){return state.DATE.getTime();};
+      this.seconds = function(){return state.DATE.getSeconds();};
+      this.minutes = function(){return state.DATE.getMinutes();};
+      this.hours   = function(){return state.DATE.getHours();};
+      this.days    = function(){return state.DATE.getDate();};
+      this.month   = function(){return state.DATE.getMonth();};
+      this.year    = function(){return state.DATE.getYear();};
+      //
+      
       
    };
    
@@ -702,7 +773,9 @@
          this.trigger('move',x,y);
       },
       resize: function(width, height){
-         this._el.width(width).height(height);
+         //this._el.width(width).height(height);
+         this._el[0].width = width;
+         this._el[0].height = height;
          this.trigger('resize', width, height);
       },
       getContext: function(type){
@@ -712,6 +785,9 @@
          f = !(!f);
          this.focused = f;
          this.trigger(f?'focus':'blur');
+      },
+      style: function(prop, val){
+         this.el.style[prop]=val;
       }
    });
    
@@ -733,13 +809,20 @@
                   mode: this.timerSpec.mode,
                   element: this.timerSpec.element || document
                });
-               // add the handler
-               this.clock.addHandler(this.cycle, this);
+
             }
          }
+         
+         
+         // add the handler
+         this.clock.addHandler(this.cycle, this);         
+                  
+         this.handlers = [];
+         
          var uiSpec = this.spec;
          var element = this.bindToEl;
          var canvas = undefined;
+         
          if(element){
             if(element.nodeName != 'CANVAS'){
                uiSpec.x = $(element).offset().left;
@@ -752,8 +835,15 @@
                canvas = element;
             }
          }
+         ;
          this.canvas = new Canvas({
             el: canvas
+         });
+         
+         this.canvas.resize(uiSpec.width, uiSpec.height);
+         this.context = new GraphicsContext({
+            graphicsType: uiSpec.graphics,
+            canvas: this.canvas
          });
       },
       cycle: function(tick){
@@ -763,7 +853,14 @@
          this.context.update();
          this.drawing = true;
          for(var i = 0; i < this.handlers.length; i++){
-            this.handlers[i].call(this.context, this.context, tick, this.runtime);
+            try{
+               this.handlers[i].call(this.context, this.context, tick, this.runtime);
+            }catch(e){
+               if(this.runtime.error(e, this, this.handlers[i], tick) === false){
+                  this.clock.stop();
+                  break;
+               }
+            }
          }
          this.drawing = false;
       },
@@ -803,7 +900,7 @@
    });
    
    
-   var Runtime = function(config){
+   var Runtime = R = function(config){
       Runtime.superclass.constructor.call(this, config);
    };
    
@@ -853,6 +950,46 @@
                return undefined;
             };
          };
+         
+         this.cache = {
+            byId: {},
+            byHandler: {}
+         };
+         
+         // the 'master' clock
+         var masterClock = this.clock;
+         
+         this.clock = new libdraw.util.timer.Clock({
+            interval: masterClock.interval || 1000/30, // 30 FPS,
+            mode: masterClock.mode || 'interval',
+            element: masterClock.element || document // if 'animation-frame' requested...
+         });
+         // default layer
+         this.defaultLayer = this.layer({
+            name: 'default',
+            index: 0,
+            spec: this.spec,
+            bindToEl: this.spec.canvas,
+            timer: {
+               clock: this.clock
+            }
+         });
+         
+         this.errHandlers = [];
+         
+         // extensions init ...
+         var extensions = this.extensions;
+         if(extensions){
+            for(var i = 0; i < this.extensions.length; i++){
+               this.loadExtension(extensions[i]);
+            }
+         }else{
+            // load all ...
+            clean.each(libdraw.ext, function(v,k){
+               this.loadExtension(k);
+            }, this);
+         }
+         
       },
       /*
       config = {
@@ -875,19 +1012,143 @@
       
       */
       layer: function(config){
+         if(config===undefined){
+            return this.layers.get(0);
+         }
          if(typeof(config) == 'string' || typeof(config) == 'number')
             return this.layers.get(config);
-         
          var layer = this.layers.add(new Layer({
             name: config.name,
             index: config.index,
             spec: config.spec, // TODO: merge with existing one...
             timerSpec: config.timer, 
-            clock: config.timer ? undefined : this.clock
+            clock: config.timer ? undefined : this.clock,
+            bindToEl: config.bindToEl,
+            runtime: this
          }));
 
          return layer;
       },
+      register: function(callback, layer){
+         var id = libdraw.getId('hnd');
+         var layer = this.layers.get(layer);
+         if(!layer)layer=this.layer();
+         var co = {
+            id: id,
+            callback: callback,
+            layer: layer
+         };
+         
+         this.cache.byId[id] = co;
+         this.cache.byHandler[callback] = co;
+         
+         layer.schedule(callback);
+         
+         return id;
+      },
+      unregister: function(callback){
+         var co = undefined;
+         if(typeof(callback) == 'string'){
+            co = this.cache.byId[callback];
+         }else if(typeof(callback) == 'function'){
+            co = this.cache.byHandler[callback];
+         }
+         if(co){
+            co.layer.remove(co.callback);
+            delete this.cache.byId[co.id];
+            delete this.cache.byHandler[co.callback];
+         }
+      },
+      
+      start: function(){},
+      stop: function(){},
+      pause: function(){},
+      resume: function(){},
+      
+      loadExtension: function(extension){
+         var ext = libdraw.ext[extension];
+         if(ext){
+            if (! this.extensions){
+               this.extensions = [];
+            }
+            var extObj = undefined;
+            if ( ugly.isFunction(ext) ){
+               extObj = ext.call(this);
+            }else{
+               extObj = ext;
+            }
+            var name = extObj && extObj.name ? extObj.name: extension;
+            var description = extObj && extObj.description ? extObj.description: 'none';
+            
+            if(extObj && typeof(extObj) == 'object'){
+               delete extObj.name;
+               delete extObj.description;
+               libdraw.util.ext(this, extObj);
+               extObj.name = name;
+               extObj.description = description;
+            }
+            
+            this.extensions.push({
+               name: name,
+               description: description, 
+               extension: ext
+            });
+         }else{
+            throw new Error('Extension '+extension+' is not registered.')
+         }
+      },
+      
+      getMetrics: function(){},
+      getMeasures: function(){},
+      
+      error: function(err, layer, callback, tick){
+         var retVal = undefined;
+         for(var i = 0; i < this.errHandlers.length; i++){
+            if(!this.errHandlers[i].layer || this.errHanlders[i].layer == layer.name){
+               retVal = retVal || this.errHandlers[i].handler.call(this, err, layer, callback, tick);
+            }
+         }
+         return retVal;
+      },
+      
+      errHandler: function(handler, layer){
+         this.errHandlers.push({
+            handler: handler,
+            layer: layer
+         });
+      }
    });
+   
+   
+   
+   
+   /* -------------------------------- 
+      ---- DEV EXTENSION -------------
+      -------------------------------- */
+   
+   // this gets called at this point and the extension is being registered at
+   // the extension packages...
+   libdraw.extend('dev-ext', function(ldVersion){
+      // ldVersion - you can check here for compatibility
+      
+      return function(){
+         // the scope of this function is the Runtime object
+         var hnd = clean.nop;
+         
+         if(window.console){
+            hnd = function(ex, layer, callback, tick){
+               console.log('ERROR: +',tick,
+                  ' Layer -> ',layer.name,'; ', callback,', error ->', ex );
+               return false; // stop the clock on this layer.
+            };
+         }
+         
+         this.errHandler(hnd);
+                  
+         // if an object id being returned, the runtime instance is extended with it
+         return {};
+      }
+   });
+   
    
 })();
