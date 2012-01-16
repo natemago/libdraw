@@ -254,6 +254,13 @@
       }
    };
    N = necessary;
+   
+   var M = {
+      PI: Math.PI,
+      TWO_PI: Math.PI*2,
+      PI_HALF: Math.PI/2
+   };
+   
    // libdraw namespace:
    
    
@@ -601,7 +608,8 @@
          height: 225,
          background: 'rgba(0,0,0,0)',
          fontStyle: '12px sans-serif',
-         canvas: config.canvas
+         canvas: config.canvas,
+         DATA: {}
       };
       
       this.graphicsType = config.graphicsType || '2d';
@@ -689,7 +697,7 @@
             state.canvas.style('background', background);
             state.background = background;
          }
-         this.ctx.clearRect(0,0,state.width, state.height);
+         this.ctx.clearRect(0,0,400,400);//state.width, state.height);
       };
       
       
@@ -702,15 +710,27 @@
          this.ctx.closePath();
       };
       
+      this.srect = function(x,y,w,h){
+         this.ctx.beginPath();
+         this.ctx.strokeRect(x,y,w,h);
+         this.ctx.closePath();
+      };
+      
       this.circle = function(x,y,r){
          this.ctx.beginPath();
-         this.ctx.arc(x,y,r,0, 2*Math.PI, true);
+         this.ctx.arc(x,y,r,0, M.TWO_PI, true);
          this.ctx.fill();
          if(state.lineWidth)
             this.ctx.stroke();
          this.ctx.closePath();
       }
       
+      this.scircle = function(x,y,r){
+         this.ctx.beginPath();
+         this.ctx.arc(x,y,r,0, M.TWO_PI, true);
+         this.ctx.stroke();
+         this.ctx.closePath();
+      };
       
       this.frameRate = function(fps){
         state.fps = fps;
@@ -736,10 +756,213 @@
       this.days    = function(){return state.DATE.getDate();};
       this.month   = function(){return state.DATE.getMonth();};
       this.year    = function(){return state.DATE.getYear();};
-      //
+      // 
+      
+      
+      // ------ graphics functions 2D
+      
+      this.set = function(name, obj){
+         state.DATA[name] = obj;
+      };
+      
+      this.get = function(name){
+         return state.DATA[name];
+      };
+      
+      this.unset = function(name){
+         delete state.DATA[name];
+      };
+      // state
+      this.save = function(){this.ctx.save();};
+      this.restore = function(){this.ctx.restore();}
+      
+      // transformations
+      this.scale = function(x,y){
+         state.fac_x = x;
+         state.fac_y = y;
+         this.ctx.scale(x,y);
+      };
+      
+      
+      this.r_rotate = function(ang){ // raw rotate ...
+         state.rot_angle = ang;
+      };
+      
+      this.rotate = function(ang, center, draw_rotated) {
+         this.ctx.save();
+         this.ctx.translate(center[0], center[1]);
+         this.r_rotate(ang);
+         draw_rotated.call(this, this);
+         this.ctx.restore();
+      };
+      
+      this.translate = function(dx,dy){
+         this.ctx.translate(dx,dy);
+      };
+      
+      this.transform = function(){
+         if(arguments.length == 1){
+            if(typeof(arguments[0]) == 'string'){
+               var tm = this.get(arguments[0]);
+               if(tm) this.ctx.transform.apply(this.ctx, tm);
+            }else{
+               this.ctx.transform.apply(this.ctx, arguments[0]);
+            }
+         }else{
+            this.ctx.transform.apply(this.ctx, arguments);
+         }
+      };
+      
+      this.setTransform = function(){
+         if(arguments.length == 1){
+            if(typeof(arguments[0]) == 'string'){
+               var tm = this.get(arguments[0]);
+               if(tm) this.ctx.setTransform.apply(this.ctx, tm);
+            }else{
+               this.ctx.setTransform.apply(this.ctx, arguments[0]);
+            }
+         }else{
+            this.ctx.setTransform.apply(this.ctx, arguments);
+         }
+      };
+      
+      this.setCompositing = function(globalAlpha, compositeOperation){
+         state.globalAlpha = globalAlpha;
+         state.compositeOperation = compositeOperation || state.compositeOperation;
+         this.ctx.globalAlpha = globalAlpha;
+         this.ctx.globalCompositeOperation = state.compositeOperation;
+      };
+      
+      this.r_linearGradient = function(x,y, x1,y1){
+         return this.ctx.createLinearGradient(x,y,x1,y1);
+      };
+      
+      this.r_radialGradient = function(x,y,r, x1,y1,r1){
+         return this.createRadialGradient(x,y,r, x1,y1,r1);
+      };
+      
+      var __gh = {
+         'linear': this.r_linearGradient,
+         'radial': this.r_radialGradient
+      };
+      
+      this.gradient = function (type, params, colorStops, name){
+         var gname = 'grad-' + name;
+         var grd = this.get(gname) || undefined;
+         if(grd) return grd;
+         var gh = __gh[type];
+         if(gh){
+            grd = gh.apply(this, params);
+            for(var i = 0; i < colorStops.length; i++){
+               grd.addColorStop(colorStops[0], colorStops[1]);
+            }
+            if(name){
+               this.set(gname, grd);
+            }
+            return grd;
+         }
+         return undefined;
+      };
+      
+      this.pattern = function(grObj, rep, name){ // repeat, repeat-x, repeat-y, no-repeat - default: 'repeat'
+         var pattern = undefined;
+         if(name){
+            pattern = this.get('pat-'+name);
+            if(pattern) return pattern;
+            pattern = this.ctx.createPattern(grObj, rep);
+            this.set(name, pattern);
+            return pattern;
+         }
+         return this.ctx.createPattern(grObj, rep);
+      };
+      
+      this.createShadow = function(name, offsetX, offsetY, blur, color){
+         var shadow = {
+            offsetX: offsetX || 0,
+            offsetY: offsetY || 0,
+            blur: blur || 0,
+            color: color || 'rgba(0,0,0,0)'
+         };
+         if(name){
+            this.set('shadow-'+name, shadow);
+         }
+         return shadow;
+      };
+      
+      this.shadow = function(shd){
+         if(typeof(shd) == 'string') shd = this.get('shadow-'+shd);
+         this.ctx.shadowOffsetX = shd.offsetX || 0;
+         this.ctx.shadowOffsetY = shd.offsetY || 0;
+         this.ctx.shadowBlur = shd.blur || 0;
+         this.ctx.shadowColor = shd.color || 'rgba(0,0,0,0)';
+      };
+      
+      this.text = function(str, x, y, maxWidth){
+         this.ctx.beginPath();
+         this.ctx.fillText(str, x, y);
+         this.ctx.closePath();
+         this.ctx.fill();
+       };
+      
+      // wrapped primitives
+      
+      this.begin   = function()   { this.ctx.beginPath();};
+      this.close   = function()   { this.ctx.closePath();};
+      this.moveTo  = function(x,y){ this.ctx.moveTo(x,y);};
+      this.lineTo  = function(x,y){ this.ctx.lineTo(x,y);};
+      this.bCurve  = function( cpx1,cpy1, cpx2,cpy2, x,y) { this.ctx.bezierCurveTo( cpx1,cpy1, cpx2,cpy2, x,y);};
+      this.qCurve  = function( cpx,cpy, x,y ){ this.ctx.quadraticQurveTo(cpx,cpy,x,y);};
+      this.arcTo   = function(x1,y1, x2,y2, r){ this.ctx.arcTo(x1,y1, x2,y2, r);};
+      this.arc     = function(x,y, r, sAng, eAng, ac){ this.ctx.arc(x,y,r,sAng,eAng,ac);};
+      this.rfill   = function(){ this.ctx.fill();};
+      this.rstroke = function(){ this.ctx.stroke();};
+      this.clip    = function(){ this.ctx.clip();};
+      this.isPointInPath = function(x,y){this.ctx.isPointInPath(x,y);};
+      
+      // ------------------------------
+      
+      // 
+      
+      var Point2D = function(x,y){
+         this.x = x;
+         this.y = y;
+      };
+      
+      Point2D.prototype = {
+         quadrant: function(){
+            return x>=0 ? (y>=0 ? 1 : 4) : (y>=0 ? 2: 3);
+         },
+         rotate: function(ang, rc){
+            this.translate(-rc.x,-rc.y);
+            this.x=this.x*Math.cos(ang)-this.y*Math.sin(ang);
+            this.y=this.x*Math.sin(ang)+this.y*Math.cos(ang);
+            this.translate(rc.x,rc.y);
+         },
+         translate: function(dx,dy){
+            this.x+=dx;
+            this.y+=dy;
+         }
+      };
+      
+      this.point2D = function(x,y){
+         return new Point2D(x,y);
+      };
+      
+      this.moveToP  = function(p){ this.ctx.moveTo(p.x,p.y);};
+      this.lineToP  = function(p){ this.ctx.lineTo(p.x,p.y);};
+      this.bCurveP  = function( cp1, cp2, p) { this.ctx.bezierCurveTo( cp1.x,cp1.y, cp2.x,cp2.y, p.x,p.y);};
+      this.qCurveP  = function( cp, p ){ this.ctx.quadraticQurveTo(cp.x,cp.y,p.x,p.y);};
+      this.arcToP   = function(p1, p2, r){ this.ctx.arcTo(p1.x,p1.y,p2.x,p2.y, r);};
+      this.arcP     = function(p, r, sAng, eAng, ac){ this.ctx.arc(p.x, p.y,r,sAng,eAng,ac);};
+      this.isPointInPathP = function(p){this.ctx.isPointInPath(p.x,p.y);};
+      // ------------------------------
+      
+      
+      
       
       
    };
+   
    
    libdraw.util.ext(GraphicsContext, BaseObservable);
    
