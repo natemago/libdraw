@@ -14,6 +14,9 @@
    var HALF_DAY = 3600*12;   
    var TWO_PI = Math.PI*2;
    var PI_HALF = Math.PI/2;
+   
+   var prevFps = 0;
+   var fpscolor = undefined;
    r.register(function(g, frame, rt){
       g.background('black');
       
@@ -52,6 +55,20 @@
       var pm = g.minutes() < 10 ? '0' + g.minutes() : g.minutes();
       var ps = g.seconds() < 10 ? '0' + g.seconds() : g.seconds();
       g.text(ph + ':' + pm + ':' + ps, 145,210);
+      
+      var fps = r.clock.getEstimatedSpeed();
+      if(fps){
+         if(fps > prevFps){
+            fpscolor = 'green';
+         }else if(fps < prevFps){
+            fpscolor = 'red';
+         }
+         g.fill(fpscolor);
+         g.setFont('8px mono');
+         //g.text(fps.toFixed(2)+'fps', 20,20);
+         g.text(r.clock.getMeasure(), 20,20);
+         prevFps = fps;
+      }
       
    });
    

@@ -532,6 +532,10 @@
                      return s.getStats();
                   }
                   
+                  this.getEstimatedSpeed = function(){
+                     return s.getStats().frequency;
+                  };
+                  
                   this.setMode(mode);
                 }
             }
@@ -646,6 +650,12 @@
       // build state
       libdraw.util.ext(state, (config.state || {}));
       
+      this.canvas.addListener('resize', function(e, width, height){
+         state.width = width;
+         state.height = height;
+         console.log('resize: ', width,' | ', height);
+      });
+      
       // -------------- graphics functions ---------------//
       
       this.fill = function(){
@@ -697,7 +707,7 @@
             state.canvas.style('background', background);
             state.background = background;
          }
-         this.ctx.clearRect(0,0,400,400);//state.width, state.height);
+         this.ctx.clearRect(0,0, state.width, state.height);
       };
       
       
@@ -742,6 +752,8 @@
          state.height = height;
          this.trigger('resize', width, height);
       };
+      
+      
       
       this.update = function(){
          // update the time for example...
@@ -1063,11 +1075,12 @@
             el: canvas
          });
          
-         this.canvas.resize(uiSpec.width, uiSpec.height);
+         
          this.context = new GraphicsContext({
             graphicsType: uiSpec.graphics,
             canvas: this.canvas
          });
+         this.canvas.resize(uiSpec.width, uiSpec.height);
       },
       cycle: function(tick){
          if(this.drawing){
