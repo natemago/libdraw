@@ -58,13 +58,14 @@
                   var ctx = c.getContext(name);
                   if(ctx){
                      __graphics.contextTypes[name] = true;
-                     console.log(ctx);
+                     __graphics.supported = true;
+                     //console.log(ctx);
                   }
                }catch(e){
-                  console.log(e);
+                  //console.log(e);
                }
             }catch(e){
-               console.error(e);
+               //console.error(e);
                // no graphics supported
                return false;
             }
@@ -72,7 +73,6 @@
       }
      
    };
-   U = ugly;
    
    var clean = {
       requestAnimationFrame: (function(){
@@ -142,8 +142,6 @@
          return supported;
       }
    };
-   
-   C = clean;
    
    var necessary = {
       measure: function(task, repetitions, runs){
@@ -253,7 +251,6 @@
          return result;
       }
    };
-   N = necessary;
    
    var M = {
       PI: Math.PI,
@@ -264,10 +261,9 @@
    // libdraw namespace:
    
    
-   // this object will be registered on window scope...
-   var _LD = function(){};
+
    
-   libdraw = {
+   var libdraw = {
         version: '0.3.0',
         description: 'LibDraw JavaScript library',
         ext:{}, // extension packages
@@ -383,9 +379,12 @@
                      },
                      update: function(ts){
                         this.c.total++;
+                        var ets = new Date().getTime();
+                        this.c.usage += (ets-ts);
                         if((ts - this.c.start) >= this.range){
                            this.measure(ts);
                         }
+                        
                      },
                      measure: function(ts){
                         
@@ -393,7 +392,8 @@
                         this.a.end = ts;
                         this.c = {
                            start: ts, 
-                           total: 0
+                           total: 0,
+                           usage: 0,
                         };
                      },
                      getStats: function(){
@@ -405,6 +405,10 @@
                               this.a.range = this.a.end - this.a.start;
                               this.a.avgCycleTime = this.a.range/this.a.total;
                               this.a.frequency = 1000/this.a.avgCycleTime; // in Hz
+                              this.a.usage = {
+                                 avgt: this.a.usage/this.a.total,
+                                 usage: (this.a.usage/this.a.total)/this.a.avgCycleTime
+                              };
                               var s = [
                                  this.a.frequency, 'Hz; ',
                                  't0: ', this.a.start, '; ',
@@ -911,10 +915,23 @@
       
       this.text = function(str, x, y, maxWidth){
          this.ctx.beginPath();
-         this.ctx.fillText(str, x, y);
+         if(maxWidth !== undefined)
+            this.ctx.fillText(str, x, y, maxWidth);
+         else
+            this.ctx.fillText(str, x, y);
          this.ctx.closePath();
          this.ctx.fill();
-       };
+      };
+      
+      this.outlineText = function(str, x, y, maxWidth){
+         this.ctx.beginPath();
+         if(maxWidth !== undefined)
+            this.ctx.strokeText(str, x, y, maxWidth);
+         else
+            this.ctx.strokeText(str, x, y);
+         this.ctx.closePath();
+      };
+      
       
       // wrapped primitives
       
@@ -951,8 +968,8 @@
             this.translate(rc.x,rc.y);
          },
          translate: function(dx,dy){
-            this.x+=dx;
-            this.y+=dy;
+            this.x-=dx;
+            this.y-=dy;
          }
       };
       
@@ -970,7 +987,40 @@
       // ------------------------------
       
       
+      // images
       
+      this.image = function(){
+         this.ctx.drawImage.apply(this.ctx, arguments);
+      };
+      
+      // pixel-data manipulation ...
+
+      //  TODO: pixel data manipulation
+      // ------------------------------
+      
+      
+      
+      this.clear = function(){
+         if(arguments.length == 4){
+            this.ctx.clearRect.apply(this.ctx, arguments);
+         }else{
+            this.ctx.clearRect(0,0,state.width, state.height);
+         }
+      };
+      
+      this.complex = function(points, close){
+         this.ctx.beginPath();
+         this.ctx.moveTo(points[0][0], points[0][1]);
+         for(var i = 1; i < points.length; i++){
+            this.ctx.lineTo(points[i][0], points[i][1]);
+         }
+         if(close)this.ctx.closePath();
+         
+         this.ctx.fill();
+         
+         if(state.lineWidth)
+            this.ctx.stroke();
+      };
       
       
    };
@@ -1136,7 +1186,7 @@
    });
    
    
-   var Runtime = R = function(config){
+   var Runtime = function(config){
       Runtime.superclass.constructor.call(this, config);
    };
    
@@ -1356,6 +1406,47 @@
    });
    
    
+   /*
+    * Expose it to window scope...
+    */
+   libDraw = function(selector, config){};
+   
+   var exposed = {
+      M: M,
+      pkg: {
+         timer: libdraw.util.timer, // whole timer package
+         InitializingObject: InitializingObject, // base class for all objects
+         BaseObservable: BaseObservable, // base class for observable objects
+         graphics: {
+            GraphicsContext: GraphicsContext, // base context - also 2D context by default
+            Canvas: Canvas
+         },
+         runtime: {
+            Runtime: Runtime,
+            Screen: Layer
+         }
+      },
+      tools:{
+         extend: ugly.extend,
+         extendr: ugly.extendr,
+         isFunction: ugly.isFunction
+      },
+      extensions:libdraw.ext,
+      extendWith: libdraw.extend,
+      ext: libdraw.util.ext, // class-extend
+      ns: libdraw.util.ns,
+      each: libdraw.util.each,
+      getId: libdraw.getId
+   };
+   
+   ugly.extend(exposed.tools, clean);
+   ugly.extend(exposed.tools, necessary);
+   
+   ugly.extend(libDraw, exposed);
+   libDraw.ext(libDraw, exposed);
+   
+   
+   ugly.testSupported();
    
    
    /* -------------------------------- 
@@ -1385,6 +1476,5 @@
          return {};
       }
    });
-   
    
 })();
