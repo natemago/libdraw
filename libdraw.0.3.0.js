@@ -1248,7 +1248,8 @@
          this.clock = new libdraw.util.timer.Clock({
             interval: masterClock.interval || 1000/30, // 30 FPS,
             mode: masterClock.mode || 'interval',
-            element: masterClock.element || document // if 'animation-frame' requested...
+            element: masterClock.element || document, // if 'animation-frame' requested...
+            range: 250
          });
          // default layer
          this.defaultLayer = this.layer({
@@ -1405,6 +1406,18 @@
       }
    });
    
+   var DataStore = function(config){
+      DataStore.superclass.constructor.call(this, config);
+   };
+   
+   libdraw.util.ext(DataStore, BaseObservable, {
+      store: function(key, value){},
+      read:  function(key){},
+      load:  function(){},
+      del:   function(key){},
+      filter: function(criteria){}
+   });
+  /**/
    
    /*
     * Expose it to window scope...

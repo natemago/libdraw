@@ -6,7 +6,7 @@
          canvas: data.canvas1 
       },
       clock:{
-         interval: 1000/60,
+         interval: 1000/1000,
          mode: 'interval'
       }
    });
@@ -75,8 +75,13 @@
          //g.text(fps.toFixed(2)+'fps', 20,20);
          var usage = r.clock.getMeasure().usage.usage;
          usage = usage*50;
+         if(usage){
          g.strokeSize(0);
-         g.clear(399,0,1,400);
+         //g.clear(399,0,1,400);
+         
+         g.fill('#333');
+         g.rect(399,0,1,400);
+         g.fill('cyan');
          g.rect(399,400 - usage,1,usage);
          
          
@@ -85,7 +90,7 @@
 
          prevFps = fps;
          shiftLeft = false;
-         
+         }
       }
       if(fps){
          g.setFont('10px mono');
@@ -94,7 +99,7 @@
          g.text(fps.toFixed(2) + 'fps : ' + (usage*100).toFixed(2) + '%', 2,20);
       }
    });
-   anotherClock = new libDraw.pkg.timer.Clock({interval: 1000});
+   anotherClock = new libDraw.pkg.timer.Clock({interval: 250});
    anotherClock.addHandler(function(tick){
       shiftLeft = true;
      
