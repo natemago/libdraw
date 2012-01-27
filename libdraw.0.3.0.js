@@ -546,7 +546,7 @@
         }
    };
    
-   /**
+   /*
     * Base class for initializing objects
     *
     */
@@ -1076,13 +1076,34 @@
       }
    });
    
-   var Layer = function(config){
-      Layer.superclass.constructor.call(this, config);
+   
+   
+   
+   /*
+    * Screen is an abstract representation or view on 
+    * a graphics-capable component.
+    * The screen may be or may not be visible. Either way, the Screen must 
+    * provide the following resources:
+    *    - Clock
+    *    - GraphicsContext
+    * and must offer the following functionalities:
+    *    - drawing handlers management: adding and removing of drawing handlers
+    *    - clock management: start/stop/pause/resume
+    *    - invalidate: on-demand drawing
+    * The Screen is somewhat abstract representation, having most of the Runtime
+    * capabilities but only on one graphics-capable component (canvas element).
+    * Multiple screens may share the same resources, such as the Clock and/or the 
+    * GraphicsContext.
+    */
+    
+  
+   var Screen = function(config){
+      Screen.superclass.constructor.call(this, config);
    };
    
-   libdraw.util.ext(Layer, BaseObservable, {
+   libdraw.util.ext(Screen, BaseObservable, {
       init: function(){
-         Layer.superclass.init.call(this);
+         Screen.superclass.init.call(this);
          if(this.timerSpec && !this.timerSpec.onDemand){
             if(this.timerSpec.onDemand){
                this.onDemand = true;
@@ -1193,8 +1214,8 @@
    libdraw.util.ext(Runtime, BaseObservable, {
       init: function(){
          Runtime.superclass.init.call(this);
-         this.layers = new function(){
-            var layers = [];
+         this.screens = new function(){
+            var screens = [];
             var nameIndex = {};
             var _sorter = function(a,b){
                return a.index-b.index;
@@ -1202,8 +1223,8 @@
             this.add = function(l){
                l.index = l.index || 0;
                if (! (l.name in nameIndex) ){
-                  layers.push(l);
-                  layers.sort(_sorter);
+                  screens.push(l);
+                  screens.sort(_sorter);
                   return l;
                }
                return false;
@@ -1212,9 +1233,9 @@
             this.remove = function(l){
                if (!l) return;
                if( l.name in nameIndex){
-                  for(var i = 0; i < layers.length; i++){
-                     if(layers[i] == l){
-                        layers.splice(i,1);
+                  for(var i = 0; i < screens.length; i++){
+                     if(screens[i] == l){
+                        screens.splice(i,1);
                         break;
                      }
                   }
@@ -1223,16 +1244,16 @@
             };
             
             this.each = function(callback, scope){
-               clean.each(layers, callback, scope);
+               clean.each(screenss, callback, scope);
             };
             
             this.size = function(){
-               return layers.length;
+               return screens.length;
             };
             
             this.get = function(param){
                if(typeof(param) == 'string') return nameIndex[param];
-               if(typeof(param) == 'number') return layers[param];
+               if(typeof(param) == 'number') return screens[param];
                return undefined;
             };
          };
@@ -1251,8 +1272,8 @@
             element: masterClock.element || document, // if 'animation-frame' requested...
             range: 250
          });
-         // default layer
-         this.defaultLayer = this.layer({
+         // default screen
+         this.defaultScreen = this.screen({
             name: 'default',
             index: 0,
             spec: this.spec,
@@ -1298,13 +1319,13 @@
       }
       
       */
-      layer: function(config){
+      screen: function(config){
          if(config===undefined){
-            return this.layers.get(0);
+            return this.screens.get(0);
          }
          if(typeof(config) == 'string' || typeof(config) == 'number')
-            return this.layers.get(config);
-         var layer = this.layers.add(new Layer({
+            return this.screens.get(config);
+         var screen = this.screens.add(new Screen({
             name: config.name,
             index: config.index,
             spec: config.spec, // TODO: merge with existing one...
@@ -1314,22 +1335,22 @@
             runtime: this
          }));
 
-         return layer;
+         return screen;
       },
-      register: function(callback, layer){
+      register: function(callback, screen){
          var id = libdraw.getId('hnd');
-         var layer = this.layers.get(layer);
-         if(!layer)layer=this.layer();
+         var screen = this.screens.get(screen);
+         if(!screen)screen=this.screen();
          var co = {
             id: id,
             callback: callback,
-            layer: layer
+            screen: screen
          };
          
          this.cache.byId[id] = co;
          this.cache.byHandler[callback] = co;
          
-         layer.schedule(callback);
+         screen.schedule(callback);
          
          return id;
       },
@@ -1341,7 +1362,7 @@
             co = this.cache.byHandler[callback];
          }
          if(co){
-            co.layer.remove(co.callback);
+            co.screen.remove(co.callback);
             delete this.cache.byId[co.id];
             delete this.cache.byHandler[co.callback];
          }
@@ -1388,24 +1409,32 @@
       getMetrics: function(){},
       getMeasures: function(){},
       
-      error: function(err, layer, callback, tick){
+      error: function(err, screen, callback, tick){
          var retVal = undefined;
          for(var i = 0; i < this.errHandlers.length; i++){
-            if(!this.errHandlers[i].layer || this.errHanlders[i].layer == layer.name){
-               retVal = retVal || this.errHandlers[i].handler.call(this, err, layer, callback, tick);
+            if(!this.errHandlers[i].screen || this.errHanlders[i].screen == screen.name){
+               retVal = retVal || this.errHandlers[i].handler.call(this, err, screen, callback, tick);
             }
          }
          return retVal;
       },
       
-      errHandler: function(handler, layer){
+      errHandler: function(handler, screen){
          this.errHandlers.push({
             handler: handler,
-            layer: layer
+            screen: screen
          });
       }
    });
    
+   
+   /**
+    * @class DataStore Base Class for data stores.
+    * This is the long descriptin here...
+    It may be on multiple lines.
+    * @constructor
+    *   @param config - configuration object
+    */
    var DataStore = function(config){
       DataStore.superclass.constructor.call(this, config);
    };
@@ -1417,7 +1446,7 @@
       del:   function(key){},
       filter: function(criteria){}
    });
-  /**/
+  
    
    /*
     * Expose it to window scope...
@@ -1436,7 +1465,7 @@
          },
          runtime: {
             Runtime: Runtime,
-            Screen: Layer
+            Screen: Screen
          }
       },
       tools:{
@@ -1462,6 +1491,7 @@
    ugly.testSupported();
    
    
+   
    /* -------------------------------- 
       ---- DEV EXTENSION -------------
       -------------------------------- */
@@ -1476,10 +1506,10 @@
          var hnd = clean.nop;
          
          if(window.console){
-            hnd = function(ex, layer, callback, tick){
+            var hnd = function(ex, screen, callback, tick){
                console.log('ERROR: +',tick,
-                  ' Layer -> ',layer.name,'; ', callback,', error ->', ex );
-               return false; // stop the clock on this layer.
+                  ' screen -> ',screen.name,'; ', callback,', error ->', ex );
+               return false; // stop the clock on this screen.
             };
          }
          
@@ -1489,5 +1519,5 @@
          return {};
       }
    });
-   
+  
 })();
