@@ -1431,16 +1431,27 @@
    /**
     * @class DataStore Base Class for data stores.
     * This is the long descriptin here...
-    It may be on multiple lines.
+    * It may be on multiple lines.
     * @constructor
-    *   @param config - configuration object
+    *   @param {Object} config - configuration object
     */
    var DataStore = function(config){
       DataStore.superclass.constructor.call(this, config);
    };
    
    libdraw.util.ext(DataStore, BaseObservable, {
+      /**
+       * @method store - Saves the data into the underlying store.
+       *    @param {string} key  - the data key
+       *    @param {object} value - the value to be stored in the store
+       */
       store: function(key, value){},
+      /**
+       * @method read - Reads value from the store with the saved under <code>key</code>.
+       *   @param {string} key - the key under the data is saved.
+       *   @returns {object} if the object is found, or {ref: null} if there is 
+       *                     nothing under the key requested.
+       */
       read:  function(key){},
       load:  function(){},
       del:   function(key){},
