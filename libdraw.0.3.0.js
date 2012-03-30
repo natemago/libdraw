@@ -1079,9 +1079,8 @@
    
    
    
-   /*
-    * Screen is an abstract representation or view on 
-    * a graphics-capable component.
+   /**
+    * @class Screen - Screen is an abstract representation or view on a graphics-capable component.
     * The screen may be or may not be visible. Either way, the Screen must 
     * provide the following resources:
     *    - Clock
@@ -1093,10 +1092,14 @@
     * The Screen is somewhat abstract representation, having most of the Runtime
     * capabilities but only on one graphics-capable component (canvas element).
     * Multiple screens may share the same resources, such as the Clock and/or the 
-    * GraphicsContext.
+    * GraphicsContext. @{see: GraphicsContext, Clock, libdraw.util.timer.Clock}
+    * 
     */
     
-  
+   /**
+    * @constructor Screen - Creates new screen
+    *    @param {Object} config - Configuration object.
+    */
    var Screen = function(config){
       Screen.superclass.constructor.call(this, config);
    };
@@ -1457,7 +1460,15 @@
       del:   function(key){},
       filter: function(criteria){}
    });
-  
+   
+   var ResourceManager = function(){
+      /*load: function(rcs, callback, scope){
+         
+      }*/
+   };
+   
+   ResourceManager.__CACHE = {};
+   
    
    /*
     * Expose it to window scope...
