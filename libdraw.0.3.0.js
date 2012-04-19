@@ -1537,7 +1537,7 @@
          
          this.errHandler(hnd);
                   
-         // if an object id being returned, the runtime instance is extended with it
+         // if an object is being returned, the runtime instance is extended with it
          return {};
       }
    });
