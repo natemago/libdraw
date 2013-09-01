@@ -1,5 +1,6 @@
 LibDraw is JavaScript/HTML5 graphics and animation library.
-Please see the [Introduction]: (https://github.com/natemago/libdraw/wiki/Introduction) to libDraw for more detailed information on the version 2 (0.2) of this library.
+Please see the Introduction on the Wiki for more detailed information on the second edition (version 0.2) of this library.
+  - https://github.com/natemago/libdraw/wiki/Introduction 
 
 However, the third edition of the library (version 0.3) brings a lot of new changes (the library has been rewritten from scratch) and new exciting features.
 You can keep track with the latest development by checking out the **v03devel** branch.
