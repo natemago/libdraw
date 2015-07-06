@@ -1502,7 +1502,7 @@
       extendWith: libdraw.extend,
       ext: libdraw.util.ext, // class-extend
       ns: libdraw.util.ns,
-      each: libdraw.util.each,
+      each: clean.each,
       getId: libdraw.getId
    };
    
