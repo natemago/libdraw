@@ -802,12 +802,15 @@
       
       this.r_rotate = function(ang){ // raw rotate ...
          state.rot_angle = ang;
+         this.ctx.rotate(ang);
       };
       
       this.rotate = function(ang, center, draw_rotated) {
+    	  
          this.ctx.save();
          this.ctx.translate(center[0], center[1]);
          this.r_rotate(ang);
+         this.ctx.translate(-center[0], -center[1]);
          draw_rotated.call(this, this);
          this.ctx.restore();
       };
