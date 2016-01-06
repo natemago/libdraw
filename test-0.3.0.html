@@ -1,0 +1,45 @@
+<html>
+   <head>
+      <title>LibDraw v0.3.0 test page</title>
+      <script type="text/javascript" src="libdraw.0.3.0.js"></script>
+      <script type="text/javascript">
+         c = new libdraw.util.timer.Clock({
+            interval: 100,
+            mode:'interval',
+            element: document
+         });
+         c.start();
+         
+         function test(){
+            var data = [
+               'iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAIAAAACUFjqAAAAAXNSR0IArs4c6QAAAAlwSFlzAAAL',
+               'EwAACxMBAJqcGAAAAAd0SU1FB9sMDRQ0FDloX7YAAAFBSURBVBgZATYByf4AAAAAAAAAAAAAAAAA',
+               'AAAAAAAAAAAAAAAAAAAAAAAAAf8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAA',
+               'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAA',
+               'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEb/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+               'AAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+               'AAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+               'AAAAAAAAAAAAAAAAx8oCKHJ5x4wAAAAASUVORK5CYII='
+            ];
+            //window.location="data:image/png;base64,"+data.join('\n');
+            //document.write('<img src="data:image/png;base64,'+data.join('\n')+'">');
+            var ifr = '<iframe src="data:application/png;base64,'+data.join('\n')+'"></iframe>';
+//            var ifr = '<a href="data:application/png;base64,'+data.join('\n')+'">Save here</a>';
+            document.write(ifr);
+         }
+         
+         
+      </script>
+   </head>
+   <body>
+        <input type="button" id="btn" value="TEST" onclick="test()"/>
+        <!--
+        <div style="background: url('images/0.3.0-test/back-01.png') repeat; width: 200; height: 200;">
+        </div>
+        <div style="background: url('images/0.3.0-test/back-01.png') repeat; width: 800; height: 800; position: absolute; top: 0px; left: 0px;">
+        </div>-->
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA
+AAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO
+9TXL0Y4OHwAAAABJRU5ErkJggg==" alt="Red dot">
+   </body>
+</html>

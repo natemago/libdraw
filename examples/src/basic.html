@@ -1,0 +1,69 @@
+<script id="setup-code">
+with(this){
+   background(120,120,120);
+   
+   this.x = 150;
+   this.y = 150;
+   this.nx = 150;
+   this.ny = 150;
+   this.accf = 8;
+   this.radius = 40;
+   
+   this.r1 = 70;
+   this.r2 = 80;
+   this.r3 = 85;
+   this.r4 = 75;
+   
+   this.clr = [0,255,0];
+   this.ec = 0;
+   
+   
+   this.runtime.mouseMove = function(){
+      this.nx = this.mouseX;
+      this.ny = this.mouseY;
+   };
+}
+</script>
+<script id="exec-code">
+with(this){
+   strokeSize(7);
+   stroke(255,255,255);
+   fill(clr[0],clr[1],clr[2]);
+   x -= (x-nx)/accf;
+   y -= (y-ny)/accf;
+   
+   radius+=Math.sin(frame/4);
+   circle(x,y,radius);
+   
+   strokeSize(0);
+   
+   
+   
+   fill(0,0,255);
+   circle(x + (r1*Math.cos(millis()/300)), y + (r1*Math.sin(millis()/300)), 5);
+   fill(255,255,0);
+   circle(x - (r2*Math.cos(millis()/250)), y - (r2*Math.sin(millis()/250)), 5);
+   
+   fill(255,0,0);
+   circle(x + (r3*Math.sin(millis()/200)), y + (r3*Math.cos(millis()/200)), 5);
+   fill(0,255,0);
+   circle(x - (r4*Math.sin(millis()/300)), y - (r4*Math.cos(millis()/300)), 5);
+   
+   
+   r1+=Math.sin(frame/16);
+   r2+=Math.cos(frame/20);
+   r3+=Math.sin(millis()/600);
+   r4+=Math.cos(millis()/400);
+   
+   for(var i = 0; i < 3; i++){
+      if(clr[i] == 255){
+         ec = i;
+         break;
+      }
+   }
+   
+   clr[ec] = clr[ec]-1;
+   clr[(ec+1)%3] = clr[(ec+1)%3]+1;
+   
+}
+</script>

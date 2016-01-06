@@ -1,0 +1,161 @@
+<html>
+    <head>
+        <title>LibDraw Test Page</title>
+        <!-- Dependencies -->
+        <script type="text/javascript" src="lib/jquery.js"></script>
+        <script type="text/javascript" src="lib/template.js"></script>
+        <script type="text/javascript" src="lib/dsp.js"></script>
+		
+		
+        <!-- libDraw includes -->
+        <link type="text/css" rel="stylesheet" href="css/libdraw.css"/>
+        <script type="text/javascript" src="libdraw.js"></script>
+       
+	   
+	    <script type="text/javascript" src="extensions/audio.js"></script>
+        <!-- simple example here-->
+        <script type="text/javascript">
+            $(document).ready(function(){
+                var canvas = $('#content-canvas-1')[0];
+                
+                runtime = new libdraw.Runtime({canvas: canvas});
+                
+                runtime.setup(function(){
+                     
+
+                });
+                
+                /*
+                this.runtime.on('keydown', function(){
+                       if(this.keyCode == 38){
+                          this.triangle.ang+=0.1;
+                       }else if(this.keyCode == 40){
+                          this.triangle.ang-=0.1;
+                       }
+                       this.trace("pavel");
+                       this.trace("Help - error!");
+                     });
+                */
+               
+				var data = {
+					duration: 0,
+					time: 0,
+					channels: 0,
+					rate: 0,
+					frameBufferLenght: 0
+				};
+				
+				var fft;
+				
+				
+				var spectrum = {
+					bars: [],
+					render: function(rt){
+						for(var i = 0; i < this.bars.length; i++){
+							var b = this.bars[i];
+							var bx = this.x+(this.barWidth+this.xdiff)*i;
+							var by = this.y;
+							var bw = this.barWidth;
+							var bh = b*this.zoomCoef;
+							
+							rt.strokeSize(0);
+							rt.fill(0,0,255);
+							rt.rect(bx,by,bw,bh);
+						}
+					},
+					x: 100,
+					y: 200,
+					barWidth: 4,
+					xdiff: 2,
+					zoomCoef: 100
+				};
+				
+				
+				a = _a.createAudio({
+					controls: true,
+					//src: 'aphex.ogg',
+					events:{
+						
+						'loadedmetadata':function(){
+							
+							data.duration = a.duration;
+							data.channels = a.mozChannels;
+							data.rate = a.mozSampleRate;
+							data.frameBufferLength = a.mozFrameBufferLength;
+							try{
+							fft = new FFT(data.frameBufferLength / data.channels, data.rate);
+							}catch(e){
+								console.log(e);
+							}
+						}
+					}
+				});
+				
+               a.addEventListener('MozAudioAvailable',function(e){
+							debugger;
+							try{
+							data.time = a.time;
+							var fb = e.frameBuffer;
+							var signal = Float32Array(fb.length / data.channels);
+							
+							for (var i = 0, fbl = data.frameBufferLength / 2; i < fbl; i++ ) {
+							  // Assuming interlaced stereo channels,
+							  // need to split and merge into a stero-mix mono signal
+							  signal[i] = (fb[2*i] + fb[2*i+1]) / 2;
+							}
+							
+							fft.forward(signal);
+							
+							for (var i = 0; i < fft.spectrum.length; i++ ) {
+								spectrum.bars[i] = fft.spectrum[i];
+							}
+							}catch(ex){
+								console.log(ex);
+							}
+							
+						}, false);
+                
+                a.src = 'aphex.ogg';
+                
+                runtime.exec(function(rt){
+                    rt.text('Channels: ' + data.channels, 100, 100);
+					rt.text('Rate: ' + data.rate, 100, 112);
+					rt.text('BuffLen: ' + data.frameBufferLength, 100, 124);
+                
+                    rt.text(Math.floor(data.time) + ' - ' + Math.floor(data.duration), 100,136);
+					spectrum.render(rt);
+                  
+                });
+                
+                runtime.init();
+                runtime.start();
+                runtime.showFps(true);
+               
+                
+            });
+            
+        </script>
+    </head>
+    <body>
+      <!---->
+        <canvas id="content-canvas-1" style="background: url(images/back-02.png) repeat;"></canvas>
+
+        <div id="" style="display: none;background:url(images/back-01.png) repeat-x;color: gray; font: 12px sans-serif; bottom: 0; position: absolute; width: 80%; border-top: 1px solid #4999ff;">
+            <div style="font: bold 14px; padding: 4px; text-align: left;">Debug Console</div>
+            <div style="padding: 5px;">
+               <div class="text-display" style="background: url(images/back-02.png) repeat;">
+                  test<br/>
+                  test
+               </div>
+               <div style="text-align: right; padding: 4px;">
+                  <input type="button" class="clear-button" style="font-size: 10px;" value="Clear"/>
+                  <input type="button" class="close-button" style="font-size: 10px;" value="Close"/>
+               </div>
+            </div>
+        </div>
+        
+        
+        
+        
+    </body>
+</html>

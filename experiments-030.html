@@ -1,0 +1,86 @@
+<html>
+    <head>
+        <title>LibDraw Test Page</title>
+        <!-- Dependencies -->
+        <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
+        <script type="text/javascript" src="lib/template.js"></script>
+		
+		
+        <!-- libDraw includes -->
+        <link type="text/css" rel="stylesheet" href="css/libdraw.css"/>
+        <script type="text/javascript" src="libdraw.js"></script>
+       
+	   
+	    
+        <script type="text/javascript">
+         $(document).ready(function(){
+            ld = new libdraw.Runtime({
+               canvas: $('#cnvs')[0],
+               width: 400,
+               height: 400
+            });
+            rt = undefined;
+            
+            ld.setup(function(){
+               rt = this;
+            });
+            ld.init();
+            
+            shared = {
+               d1: {},
+               d2: {}
+            };
+            
+            
+            var draw1 = function(){
+               var stop = false;
+               for(var i = 0; i < 400; i++){
+                  shared.d1.i = i;
+                  for(var j = 0; j < 400; j++){
+
+                     if(shared.d2.i <= i && shared.d2.j <= j){
+                        stop = true;
+                        console.log('d1 - stop');
+                        break;
+                     }
+                     shared.d1.j=j;
+                     rt.fill(255,0,0);
+                     rt.strokeSize(0);
+                     rt.rect(i,j,1,1);
+                  }
+                  if(stop)break;
+               }
+               console.log('d1 - end');
+            };
+            
+            var draw2 = function(){
+               var stop = false;
+               for(var i = 399; i >=0; i--){
+                  shared.d2.i = i;
+                  for(var j = 399; j >= 0; j--){
+                     if(shared.d1.i >= i && shared.d1.j >= j){
+                        stop = true;
+                        console.log('d2 - stop');
+                        break;
+                     }
+                     shared.d2.j = j;
+                     rt.fill(0,0,255);
+                     rt.strokeSize(0);
+                     rt.rect(i,j,1,1);
+                  }
+                  if(stop)break;
+               }
+               console.log('d2 - end');
+            };
+            
+            
+            setTimeout(draw1, 1001);
+            setTimeout(draw2, 1000);
+            
+         });
+        </script>
+    </head>
+    <body>
+      <canvas id="cnvs"/>
+    </body>
+</html>
